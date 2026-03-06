@@ -1,0 +1,74 @@
+[
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "d",
+    "time": 0.660407304763794
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "w",
+    "time": 2.7845730781555176
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "d",
+    "time": 2.808307409286499
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "w",
+    "time": 2.9323790073394775
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "w",
+    "time": 3.505434274673462
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "shift",
+    "time": 3.791327476501465
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "shift",
+    "time": 12.4485445022583
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "w",
+    "time": 12.5485445022583
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "a",
+    "time": 12.945189952850342
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "a",
+    "time": 14.9544837474823
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "w",
+    "time": 15.0000000000000
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "w",
+    "time": 15.1000000000000
+  }
+]
