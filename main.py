@@ -67,31 +67,31 @@ class MainWindow(QMainWindow):
                 "60级魔之楔驱离",
                 "刚需黎瑟",
                 Script60LevelExpel,
-                os.path.join(self.script_dir, "img/通用")
+                os.path.join(self.script_dir, "img/common")
             ),
             ScriptInfo(
                 "40级魔之楔驱离",
                 "刚需黎瑟",
                 Script40LevelExpel,
-                os.path.join(self.script_dir, "img/通用")
+                os.path.join(self.script_dir, "img/common")
             ),
             ScriptInfo(
                 "机傀大乱斗",
                 "请进入到包含对弈按钮的页面",
                 ScriptMechChaosBattle,
-                os.path.join(self.script_dir, "img/机傀大乱斗")
+                os.path.join(self.script_dir, "img/mech_chaos_battle")
             ),
             ScriptInfo(
                 "护送",
                 "刚需赛琪,带齐奶妈避免血量过低",
                 ScriptEscort,
-                os.path.join(self.script_dir, "img/护送")
+                os.path.join(self.script_dir, "img/escort")
             ),
             ScriptInfo(
                 "65级扼守",
                 "刚需黎瑟",
                 Script65Guard,
-                os.path.join(self.script_dir, "img/扼守")
+                os.path.join(self.script_dir, "img/guard")
             ),
             
         ]

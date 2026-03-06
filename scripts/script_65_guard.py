@@ -33,7 +33,7 @@ class Script65Guard(BaseAutomationThread):
             # 跑图
             self.log_signal.emit("开始跑图")
             self.random_delay(0.5, 1.5)
-            self.load_recording("扼守/guard_65")
+            self.load_recording("guard/guard_65")
             self.play_recording()
             self.recorder.wait_for_playback(timeout=60)
 

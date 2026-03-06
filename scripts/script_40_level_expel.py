@@ -16,7 +16,7 @@ class Script40LevelExpel(BaseAutomationThread):
             self.log_signal.emit(f"\n=== 开始第 {self.current_loop} 轮循环 ===")
             if self.current_loop == 1:
                 self.log_signal.emit("第一次进入游戏")
-                if not self.game_first(first_timeout, begin_timeout, in_game_timeout):
+                if not self.game_first():
                     self.log_signal.emit("第一次进入游戏失败，尝试重新开始")
                     if not self.game_again(again_timeout=5):
                         self.log_signal.emit("重新开始游戏失败")

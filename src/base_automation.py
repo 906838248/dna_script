@@ -254,7 +254,7 @@ class BaseAutomationThread(QThread):
         """
         original_img_folder = self.img_folder
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.img_folder = os.path.join(script_dir, "img/通用")
+        self.img_folder = os.path.join(script_dir, "img/common")
         
         try:
             if not self.click_image("again.png", timeout=again_timeout):
@@ -291,7 +291,7 @@ class BaseAutomationThread(QThread):
         """
         original_img_folder = self.img_folder
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.img_folder = os.path.join(script_dir, "img/通用")
+        self.img_folder = os.path.join(script_dir, "img/common")
         
         try:
             keyboard.press_and_release('esc')
@@ -326,7 +326,7 @@ class BaseAutomationThread(QThread):
         """
         original_img_folder = self.img_folder
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.img_folder = os.path.join(script_dir, "img/通用")
+        self.img_folder = os.path.join(script_dir, "img/common")
         
         try:
             
@@ -366,7 +366,7 @@ class BaseAutomationThread(QThread):
         """
         original_img_folder = self.img_folder
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.img_folder = os.path.join(script_dir, "img/通用")
+        self.img_folder = os.path.join(script_dir, "img/common")
         try:
             pyautogui.press('esc')
             self.random_delay(1.5, 2.5)
