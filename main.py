@@ -3,6 +3,9 @@ import os
 import time
 import keyboard
 import threading
+import importlib.util
+import inspect
+from pathlib import Path
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QPushButton, QLabel, QSpinBox, 
                                QTextEdit, QMessageBox, QGroupBox, QComboBox, 
@@ -16,12 +19,7 @@ from src.input_recorder import InputRecorder, RecordingManager
 from src.version_info import version_manager
 from src.config_manager import config_manager
 from src.shortcut_manager import shortcut_manager, ShortcutAction
-
-from scripts.script_40_level_expel import Script40LevelExpel
-from scripts.script_60_level_expel import Script60LevelExpel
-from scripts.script_mech_chaos_battle import ScriptMechChaosBattle
-from scripts.script_escort import ScriptEscort
-from scripts.script_65_guard import Script65Guard
+from src.base_automation import BaseAutomationThread
 
 
 
@@ -61,40 +59,8 @@ class MainWindow(QMainWindow):
         # 获取项目根目录（main.py所在目录）
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # 可用的脚本列表
-        self.scripts = [
-            ScriptInfo(
-                "60级魔之楔驱离",
-                "刚需黎瑟",
-                Script60LevelExpel,
-                os.path.join(self.script_dir, "img/common")
-            ),
-            ScriptInfo(
-                "40级魔之楔驱离",
-                "刚需黎瑟",
-                Script40LevelExpel,
-                os.path.join(self.script_dir, "img/common")
-            ),
-            ScriptInfo(
-                "机傀大乱斗",
-                "请进入到包含对弈按钮的页面",
-                ScriptMechChaosBattle,
-                os.path.join(self.script_dir, "img/mech_chaos_battle")
-            ),
-            ScriptInfo(
-                "护送",
-                "刚需赛琪,带齐奶妈避免血量过低",
-                ScriptEscort,
-                os.path.join(self.script_dir, "img/escort")
-            ),
-            ScriptInfo(
-                "65级扼守",
-                "刚需黎瑟",
-                Script65Guard,
-                os.path.join(self.script_dir, "img/guard")
-            ),
-            
-        ]
+        # 自动加载scripts文件夹中的脚本
+        self.scripts = self.auto_load_scripts()
         
         self.current_script = None  # 当前选中的脚本
         self.is_recording = False  # 是否正在录制
@@ -102,6 +68,53 @@ class MainWindow(QMainWindow):
         self.recording_manager = RecordingManager()  # 录制管理器
         self.init_ui()
         self.load_saved_config()
+
+    def auto_load_scripts(self):
+        """
+        自动加载scripts文件夹中的所有脚本
+        
+        Returns:
+            list: ScriptInfo对象列表
+        """
+        scripts = []
+        scripts_dir = os.path.join(self.script_dir, "scripts")
+        
+        if not os.path.exists(scripts_dir):
+            print(f"警告: scripts文件夹不存在: {scripts_dir}")
+            return scripts
+        
+        for file_path in Path(scripts_dir).glob("script_*.py"):
+            if file_path.name == "__init__.py":
+                continue
+            
+            try:
+                spec = importlib.util.spec_from_file_location(file_path.stem, file_path)
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    
+                    for name, obj in inspect.getmembers(module):
+                        if (inspect.isclass(obj) and 
+                            issubclass(obj, BaseAutomationThread) and 
+                            obj != BaseAutomationThread and
+                            hasattr(obj, 'SCRIPT_NAME')):
+                            
+                            script_name = getattr(obj, 'SCRIPT_NAME')
+                            script_description = getattr(obj, 'SCRIPT_DESCRIPTION', '')
+                            script_img_folder = getattr(obj, 'SCRIPT_IMG_FOLDER', '')
+                            
+                            scripts.append(ScriptInfo(
+                                script_name,
+                                script_description,
+                                obj,
+                                os.path.join(self.script_dir, script_img_folder)
+                            ))
+                            
+                            print(f"已加载脚本: {script_name}")
+            except Exception as e:
+                print(f"加载脚本失败 {file_path.name}: {str(e)}")
+        
+        return scripts
 
     def init_ui(self):
         """初始化用户界面"""

@@ -2,6 +2,10 @@ from src.base_automation import BaseAutomationThread
 import pyautogui
 
 class Script60LevelExpel(BaseAutomationThread):
+    SCRIPT_NAME = "60级魔之楔驱离"
+    SCRIPT_DESCRIPTION = "刚需黎瑟"
+    SCRIPT_IMG_FOLDER = "img/common"
+
     def run(self):  
         for i in range(self.loop_count):
             if not self.running:

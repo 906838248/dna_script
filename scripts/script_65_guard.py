@@ -3,6 +3,10 @@ import pyautogui
 import keyboard
 
 class Script65Guard(BaseAutomationThread):
+    SCRIPT_NAME = "65级扼守"
+    SCRIPT_DESCRIPTION = "刚需黎瑟"
+    SCRIPT_IMG_FOLDER = "img/guard"
+
     def run(self):  
         for i in range(self.loop_count):
             if not self.running:

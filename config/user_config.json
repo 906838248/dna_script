@@ -1,0 +1,21 @@
+{
+    "script": {
+        "last_selected": "机傀大乱斗",
+        "last_loop_count": 1,
+        "auto_switch_to_log": false
+    },
+    "recording": {
+        "last_name": ""
+    },
+    "window": {
+        "width": 900,
+        "height": 700
+    },
+    "shortcuts": {
+        "start_automation": "F5",
+        "stop_automation": "F6",
+        "clear_log": "F7",
+        "toggle_recording": "F8",
+        "stop_recording_playback": "esc"
+    }
+}

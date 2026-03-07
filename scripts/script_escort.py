@@ -3,6 +3,10 @@ import pyautogui
 import keyboard
 
 class ScriptEscort(BaseAutomationThread):
+    SCRIPT_NAME = "护送"
+    SCRIPT_DESCRIPTION = "刚需赛琪,带齐奶妈避免血量过低"
+    SCRIPT_IMG_FOLDER = "img/escort"
+
     def run(self):  
         for i in range(self.loop_count):
             if not self.running:

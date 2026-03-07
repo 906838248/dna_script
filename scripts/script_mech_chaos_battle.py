@@ -2,6 +2,10 @@ from src.base_automation import BaseAutomationThread
 import pyautogui
 
 class ScriptMechChaosBattle(BaseAutomationThread):
+    SCRIPT_NAME = "机傀大乱斗"
+    SCRIPT_DESCRIPTION = "请进入到包含对弈按钮的页面"
+    SCRIPT_IMG_FOLDER = "img/mech_chaos_battle"
+
     def run(self):
         for i in range(self.loop_count):
             if not self.running:
