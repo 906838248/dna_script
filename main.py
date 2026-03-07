@@ -878,6 +878,11 @@ class MainWindow(QMainWindow):
         event.accept()
 
 if __name__ == "__main__":
+    import multiprocessing
+    
+    # 设置多进程启动方式为spawn，避免Windows平台的问题
+    multiprocessing.set_start_method('spawn', force=True)
+    
     import ctypes
     
     # Windows平台DPI感知设置
