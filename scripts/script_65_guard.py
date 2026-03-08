@@ -45,6 +45,15 @@ class Script65Guard(BaseAutomationThread):
             self.log_signal.emit("重置位置")
             self.random_delay(0.5, 1.5)
             self.reset_position()
+            self.interruptible_sleep(1.5)
+            if not self.find_image("succeed.png", confidence=0.8, timeout=2):
+                self.log_signal.emit("重置位置失败，重新开始")
+                if not self.game_retry():
+                    self.log_signal.emit("重试失败，停止循环")
+                    break
+                self.current_loop -= 1
+                continue
+
 
             # 开始刷本
             self.log_signal.emit("开始刷本")
