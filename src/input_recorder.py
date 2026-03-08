@@ -30,6 +30,7 @@ def _playback_worker(actions: List[Dict], speed_multiplier: float,
         for action in actions:
             # 检查停止信号
             if stop_event.is_set():
+                status_queue.put(('finished', None))
                 break
             
             # 计算目标时间并等待
@@ -83,6 +84,7 @@ def _playback_worker(actions: List[Dict], speed_multiplier: float,
             
             # 再次检查停止信号
             if stop_event.is_set():
+                status_queue.put(('finished', None))
                 break
         
         # 释放所有按键
@@ -479,6 +481,19 @@ class InputRecorder:
             if time.time() - start_time > timeout:
                 return False
             time.sleep(0.1)
+        
+        # 进程结束后，再次检查状态队列
+        while self.is_playing:
+            try:
+                status, _ = self.status_queue.get(timeout=0.5)
+                if status == 'finished':
+                    self.is_playing = False
+                    return True
+                elif status == 'error':
+                    self.is_playing = False
+                    return False
+            except:
+                break
         
         return True
     
