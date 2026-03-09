@@ -52,10 +52,21 @@ class BaseAutomationThread(QThread):
         # 获取项目根目录（src的父目录）
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.recording_manager = RecordingManager(os.path.join(project_root, "recordings"))  # 录制管理器
+        
+        # 模板图片缓存，避免重复加载
+        self.template_cache = {}
+        
+        # 屏幕截图缓存，减少频繁截图
+        self.screenshot_cache = None
+        self.screenshot_cache_time = 0
+        self.screenshot_cache_ttl = 0.1  # 缓存有效期（秒）
 
     def stop(self):
         """停止自动化线程"""
         self.running = False
+        # 清理缓存
+        self.template_cache.clear()
+        self.screenshot_cache = None
 
     def random_delay(self, min_delay=0.5, max_delay=2.0):
         """
@@ -173,19 +184,28 @@ class BaseAutomationThread(QThread):
         Returns:
             找到则返回(center_x, center_y)，否则返回None
         """
-        image_path = os.path.join(self.img_folder, image_name)
-        # 读取模板图片
-        template = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
-        if template is None:
-            self.log_signal.emit(f"错误: 无法加载图片 {image_path}")
-            return None
+        # 使用缓存的模板图片
+        if image_name not in self.template_cache:
+            image_path = os.path.join(self.img_folder, image_name)
+            template = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if template is None:
+                self.log_signal.emit(f"错误: 无法加载图片 {image_path}")
+                return None
+            self.template_cache[image_name] = template
+        
+        template = self.template_cache[image_name]
         
         start_time = time.time()
         while self.running and time.time() - start_time < timeout:
-            # 截取屏幕
-            screenshot = pyautogui.screenshot()
-            screenshot_np = np.array(screenshot)
-            screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
+            # 使用缓存的屏幕截图（如果未过期）
+            current_time = time.time()
+            if self.screenshot_cache is None or current_time - self.screenshot_cache_time > self.screenshot_cache_ttl:
+                screenshot = pyautogui.screenshot()
+                screenshot_np = np.array(screenshot)
+                self.screenshot_cache = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
+                self.screenshot_cache_time = current_time
+            
+            screenshot_bgr = self.screenshot_cache
             
             # 使用模板匹配算法查找图片
             result = cv2.matchTemplate(screenshot_bgr, template, cv2.TM_CCOEFF_NORMED)
