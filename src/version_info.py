@@ -42,6 +42,7 @@ class VersionManager:
                     "优化脚本逻辑和命名"
                     "优化了代码结构",
                     "完善了错误处理机制"
+                    "在 base_automation.py 中实现通用游戏循环方法"
 
                 ]
             )

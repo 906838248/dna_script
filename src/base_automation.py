@@ -393,6 +393,149 @@ class BaseAutomationThread(QThread):
         finally:
             self.img_folder = original_img_folder
     
+    def run_game_loop(self, game_logic_callback, first_timeout=5, again_timeout=600, retry_timeout=5):
+        """
+        通用的游戏循环执行方法
+        
+        Args:
+            game_logic_callback: 游戏逻辑回调函数，接收self作为参数，返回True表示成功，False表示失败
+            first_timeout: 第一次进入游戏的超时时间
+            again_timeout: 重新开始游戏的超时时间
+            retry_timeout: 重试的超时时间
+            
+        Returns:
+            成功完成所有循环返回True，中途失败返回False
+        """
+        for i in range(self.loop_count):
+            if not self.running:
+                break
+            
+            self.current_loop = i + 1
+            self.progress_signal.emit(self.current_loop, self.loop_count)
+            self.log_signal.emit(f"\n=== 开始第 {self.current_loop} 轮循环 ===")
+            
+            if self.current_loop == 1:
+                self.log_signal.emit("第一次进入游戏")
+                if not self.game_first(first_timeout=first_timeout):
+                    self.log_signal.emit("第一次进入游戏失败，尝试重新开始")
+                    if not self.game_again(again_timeout=retry_timeout):
+                        self.log_signal.emit("重新开始游戏失败")
+                        return False
+            else:
+                self.log_signal.emit("重新开始游戏")
+                if not self.game_again(again_timeout=again_timeout):
+                    self.log_signal.emit("重新开始游戏失败，尝试重试")
+                    self.game_retry()
+                    if not self.game_again(again_timeout=retry_timeout):
+                        self.log_signal.emit("重试失败，停止循环")
+                        return False
+            
+            try:
+                if not game_logic_callback():
+                    self.log_signal.emit("游戏逻辑执行失败，尝试重试")
+                    if not self.game_retry():
+                        self.log_signal.emit("重试失败，停止循环")
+                        return False
+                    
+                    if not self.game_again(again_timeout=retry_timeout):
+                        self.log_signal.emit("重新开始游戏失败，停止循环")
+                        return False
+                    
+                    if not game_logic_callback():
+                        self.log_signal.emit("游戏逻辑执行再次失败，停止循环")
+                        return False
+            except Exception as e:
+                self.log_signal.emit(f"游戏逻辑执行异常: {str(e)}")
+                if not self.game_retry():
+                    self.log_signal.emit("重试失败，停止循环")
+                    return False
+                continue
+            
+            self.log_signal.emit(f"=== 第 {self.current_loop} 轮循环完成 ===")
+            self.random_delay(1.5, 3.0)
+        
+        return True
+    
+    def run_game_loop_with_retry(self, game_logic_callback, max_retries=2, first_timeout=5, again_timeout=600, retry_timeout=5):
+        """
+        通用的游戏循环执行方法（带重试机制）
+        
+        Args:
+            game_logic_callback: 游戏逻辑回调函数，接收self作为参数，返回True表示成功，False表示失败
+            max_retries: 最大重试次数
+            first_timeout: 第一次进入游戏的超时时间
+            again_timeout: 重新开始游戏的超时时间
+            retry_timeout: 重试的超时时间
+            
+        Returns:
+            成功完成所有循环返回True，中途失败返回False
+        """
+        for i in range(self.loop_count):
+            if not self.running:
+                break
+            
+            self.current_loop = i + 1
+            self.progress_signal.emit(self.current_loop, self.loop_count)
+            self.log_signal.emit(f"\n=== 开始第 {self.current_loop} 轮循环 ===")
+            
+            if self.current_loop == 1:
+                self.log_signal.emit("第一次进入游戏")
+                if not self.game_first(first_timeout=first_timeout):
+                    self.log_signal.emit("第一次进入游戏失败，尝试重新开始")
+                    if not self.game_again(again_timeout=retry_timeout):
+                        self.log_signal.emit("重新开始游戏失败")
+                        return False
+            else:
+                self.log_signal.emit("重新开始游戏")
+                if not self.game_again(again_timeout=again_timeout):
+                    self.log_signal.emit("重新开始游戏失败，尝试重试")
+                    self.game_retry()
+                    if not self.game_again(again_timeout=retry_timeout):
+                        self.log_signal.emit("重试失败，停止循环")
+                        return False
+            
+            retry_count = 0
+            success = False
+            
+            while retry_count <= max_retries and not success:
+                try:
+                    if game_logic_callback():
+                        success = True
+                    else:
+                        retry_count += 1
+                        if retry_count <= max_retries:
+                            self.log_signal.emit(f"游戏逻辑执行失败，第 {retry_count} 次重试")
+                            if not self.game_retry():
+                                self.log_signal.emit("重试失败，停止循环")
+                                return False
+                            
+                            if not self.game_again(again_timeout=retry_timeout):
+                                self.log_signal.emit("重新开始游戏失败，停止循环")
+                                return False
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count <= max_retries:
+                        self.log_signal.emit(f"游戏逻辑执行异常: {str(e)}，第 {retry_count} 次重试")
+                        if not self.game_retry():
+                            self.log_signal.emit("重试失败，停止循环")
+                            return False
+                        
+                        if not self.game_again(again_timeout=retry_timeout):
+                            self.log_signal.emit("重新开始游戏失败，停止循环")
+                            return False
+                    else:
+                        self.log_signal.emit(f"游戏逻辑执行异常: {str(e)}，停止循环")
+                        return False
+            
+            if not success:
+                self.log_signal.emit(f"游戏逻辑执行失败，已重试 {max_retries} 次，停止循环")
+                return False
+            
+            self.log_signal.emit(f"=== 第 {self.current_loop} 轮循环完成 ===")
+            self.random_delay(1.5, 3.0)
+        
+        return True
+
         
 
     def start_recording(self):
