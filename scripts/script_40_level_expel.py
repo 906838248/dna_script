@@ -1,8 +1,6 @@
 from src.base_automation import BaseAutomationThread
 import pyautogui
 import keyboard
-import time
-import random
 import pydirectinput
 
 class Script40LevelExpel(BaseAutomationThread):
@@ -58,8 +56,6 @@ class Script40LevelExpel(BaseAutomationThread):
 
             self.log_signal.emit("等待游戏结束...")
             
-            self.log_signal.emit(f"=== 第 {self.current_loop} 轮循环完成 ===")
-            self.random_delay(1.5, 3.0)
         
         self.log_signal.emit("\n所有循环已完成！")
         self.finished_signal.emit()

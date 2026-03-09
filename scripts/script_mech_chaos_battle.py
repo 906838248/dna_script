@@ -62,8 +62,6 @@ class ScriptMechChaosBattle(BaseAutomationThread):
                 self.log_signal.emit("等待 exit 超时，停止循环")
                 break
             
-            self.log_signal.emit(f"=== 第 {self.current_loop} 轮循环完成 ===")
-            self.random_delay(1.5, 3.0)
         
         self.log_signal.emit("\n所有循环已完成！")
         self.finished_signal.emit()

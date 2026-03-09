@@ -1,8 +1,8 @@
 from .script_40_level_expel import Script40LevelExpel
 from .script_60_level_expel import Script60LevelExpel   
 from .script_mech_chaos_battle import ScriptMechChaosBattle
-from .script_escort import ScriptEscort
-from .script_65_guard import Script65Guard
+from .script_rad_ballpy import ScriptEscort
+from .script_65_rad_ball import Script65RadBall
 
 
 
@@ -11,5 +11,5 @@ __all__ = [
     'Script40LevelExpel',
     'ScriptMechChaosBattle',
     'ScriptEscort',
-    'Script65Guard',    
+    'Script65RadBall',    
 ]

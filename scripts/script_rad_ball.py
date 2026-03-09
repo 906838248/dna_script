@@ -1,9 +1,8 @@
 from src.base_automation import BaseAutomationThread
 import pyautogui
-import keyboard
 
-class ScriptEscort(BaseAutomationThread):
-    SCRIPT_NAME = "护送"
+class ScriptRadBall(BaseAutomationThread):
+    SCRIPT_NAME = "深红凝珠"
     SCRIPT_DESCRIPTION = "刚需赛琪,带齐奶妈避免血量过低"
     SCRIPT_IMG_FOLDER = "img/escort"
 
@@ -38,7 +37,7 @@ class ScriptEscort(BaseAutomationThread):
             self.log_signal.emit("进入游戏,当前为房间一")
 
             self.log_signal.emit("开始走出房间一")
-            self.load_recording("escort/escort_1")
+            self.load_recording("rad_ball/rad_ball_1")
             self.play_recording()
             self.recorder.wait_for_playback(timeout=60)
             pyautogui.press('q')
@@ -50,48 +49,48 @@ class ScriptEscort(BaseAutomationThread):
 
             if self.find_image("map1.png", timeout=3):
                 self.log_signal.emit("确认为地图类型一")
-                self.load_recording("escort/map1_1")
+                self.load_recording("rad_ball/map1_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map1_2")
+                self.load_recording("rad_ball/map1_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map1_3")
+                self.load_recording("rad_ball/map1_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
 
             elif self.find_image("map2.png", timeout=3):
                 self.log_signal.emit("确认为地图类型二")
-                self.load_recording("escort/map2_1")
+                self.load_recording("rad_ball/map2_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map2_2")
+                self.load_recording("rad_ball/map2_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map2_3")
+                self.load_recording("rad_ball/map2_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
             elif self.find_image("map3.png", timeout=3):
                 self.log_signal.emit("确认为地图类型三")
-                self.load_recording("escort/map3_1")
+                self.load_recording("rad_ball/map3_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map3_2")
+                self.load_recording("rad_ball/map3_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map3_3")
+                self.load_recording("rad_ball/map3_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
 
             elif self.find_image("map4.png", timeout=3):
                 self.log_signal.emit("确认为地图类型四")
-                self.load_recording("escort/map4_1")
+                self.load_recording("rad_ball/map4_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map4_2")
+                self.load_recording("rad_ball/map4_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("escort/map4_3")
+                self.load_recording("rad_ball/map4_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
 
@@ -101,9 +100,6 @@ class ScriptEscort(BaseAutomationThread):
             
 
             
-
-            self.log_signal.emit(f"=== 第 {self.current_loop} 轮循环完成 ===")
-            self.random_delay(1.5, 3.0)
         
         self.log_signal.emit("\n所有循环已完成！")
         self.finished_signal.emit()

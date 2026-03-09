@@ -1,0 +1,26 @@
+[
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "w",
+    "time": 0.8994946000000255
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "shift",
+    "time": 1.557418699999971
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "shift",
+    "time": 24.88441510000007
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "w",
+    "time": 24.90541129999997
+  }
+]
