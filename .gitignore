@@ -188,3 +188,6 @@ rules/mode.md
 .trae/rules/mode.md
 fix.txt
 .config
+run_tests.py
+tests/
+requirements.txt

@@ -115,9 +115,33 @@ class MainWindow(QMainWindow):
         self.automation_controller.log_signal.connect(self.log)
         self.automation_controller.finished_signal.connect(self.on_automation_finished)
         self.automation_controller.progress_signal.connect(self.update_progress)
+        self.automation_controller.error_signal.connect(self.on_automation_error)
         
         self.recording_controller.log_signal.connect(self.log)
         self.recording_controller.state_changed_signal.connect(self.on_recording_state_changed)
+        self.recording_controller.error_signal.connect(self.on_recording_error)
+    
+    def on_automation_error(self, error_type, error_message):
+        """
+        自动化错误信号处理
+        
+        Args:
+            error_type: 错误类型
+            error_message: 错误消息
+        """
+        self.log(f"[错误] {error_type}: {error_message}")
+        QMessageBox.warning(self, "自动化错误", f"{error_type}\n\n{error_message}")
+    
+    def on_recording_error(self, error_type, error_message):
+        """
+        录制错误信号处理
+        
+        Args:
+            error_type: 错误类型
+            error_message: 错误消息
+        """
+        self.log(f"[错误] {error_type}: {error_message}")
+        QMessageBox.warning(self, "录制错误", f"{error_type}\n\n{error_message}")
     
     def init_ui(self):
         """初始化用户界面"""
@@ -534,22 +558,30 @@ class MainWindow(QMainWindow):
         
         loop_count = self.loop_spinbox.value()
         
-        if self.automation_controller.start_automation(script, loop_count):
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            self.loop_spinbox.setEnabled(False)
-            self.script_combo.setEnabled(False)
-            
-            if self.auto_switch_checkbox.isChecked():
-                self.tab_widget.setCurrentIndex(2)
+        try:
+            if self.automation_controller.start_automation(script, loop_count):
+                self.start_button.setEnabled(False)
+                self.stop_button.setEnabled(True)
+                self.loop_spinbox.setEnabled(False)
+                self.script_combo.setEnabled(False)
+                
+                if self.auto_switch_checkbox.isChecked():
+                    self.tab_widget.setCurrentIndex(2)
+        except Exception as e:
+            self.log(f"启动自动化失败: {str(e)}")
+            QMessageBox.critical(self, "启动失败", f"无法启动自动化脚本:\n\n{str(e)}")
     
     def stop_automation(self):
         """停止自动化脚本"""
-        if self.automation_controller.stop_automation():
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.loop_spinbox.setEnabled(True)
-            self.script_combo.setEnabled(True)
+        try:
+            if self.automation_controller.stop_automation():
+                self.start_button.setEnabled(True)
+                self.stop_button.setEnabled(False)
+                self.loop_spinbox.setEnabled(True)
+                self.script_combo.setEnabled(True)
+        except Exception as e:
+            self.log(f"停止自动化失败: {str(e)}")
+            QMessageBox.critical(self, "停止失败", f"无法停止自动化脚本:\n\n{str(e)}")
     
     def on_automation_finished(self):
         """自动化完成时的回调函数"""
@@ -577,20 +609,28 @@ class MainWindow(QMainWindow):
         mouse_mode = 'relative' if self.mouse_mode_relative.isChecked() else 'absolute'
         min_mouse_move = self.mouse_threshold_spinbox.value()
         
-        if self.recording_controller.start_recording(mouse_mode, min_mouse_move):
-            self.is_recording = True
-            self.record_button.setText("停止")
-            self.recording_status_label.setText("状态: 录制中...")
+        try:
+            if self.recording_controller.start_recording(mouse_mode, min_mouse_move):
+                self.is_recording = True
+                self.record_button.setText("停止")
+                self.recording_status_label.setText("状态: 录制中...")
+        except Exception as e:
+            self.log(f"开始录制失败: {str(e)}")
+            QMessageBox.critical(self, "录制失败", f"无法开始录制:\n\n{str(e)}")
     
     def stop_recording_ui(self):
         """停止录制"""
         if not self.is_recording:
             return
         
-        if self.recording_controller.stop_recording():
-            self.is_recording = False
-            self.record_button.setText("录制")
-            self.recording_status_label.setText("状态: 已停止")
+        try:
+            if self.recording_controller.stop_recording():
+                self.is_recording = False
+                self.record_button.setText("录制")
+                self.recording_status_label.setText("状态: 已停止")
+        except Exception as e:
+            self.log(f"停止录制失败: {str(e)}")
+            QMessageBox.critical(self, "停止失败", f"无法停止录制:\n\n{str(e)}")
     
     def on_recording_state_changed(self, is_recording, count):
         """录制状态改变时的回调"""
@@ -607,9 +647,13 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "警告", "请输入录制名称！")
             return
         
-        if self.recording_controller.save_recording(name):
-            config_manager.set_last_recording_name(name)
-            self.recording_name_input.clear()
+        try:
+            if self.recording_controller.save_recording(name):
+                config_manager.set_last_recording_name(name)
+                self.recording_name_input.clear()
+        except Exception as e:
+            self.log(f"保存录制失败: {str(e)}")
+            QMessageBox.critical(self, "保存失败", f"无法保存录制:\n\n{str(e)}")
     
     def load_recording(self):
         """加载录制"""
@@ -618,19 +662,35 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "警告", "请输入录制名称！")
             return
         
-        self.recording_controller.load_recording(name)
+        try:
+            if self.recording_controller.load_recording(name):
+                config_manager.set_last_recording_name(name)
+                self.recording_name_input.clear()
+        except Exception as e:
+            self.log(f"加载录制失败: {str(e)}")
+            QMessageBox.critical(self, "加载失败", f"无法加载录制:\n\n{str(e)}")
     
     def play_recording(self):
         """回放录制"""
-        if self.recording_controller.play_recording(stop_callback=lambda: not self.automation_controller.is_automation_running()):
-            self.play_recording_button.setEnabled(False)
-            self.stop_playback_button.setEnabled(True)
+        speed = self.playback_speed_spinbox.value() / 100.0
+        
+        try:
+            if self.recording_controller.play_recording(speed):
+                self.play_recording_button.setEnabled(False)
+                self.stop_playback_button.setEnabled(True)
+        except Exception as e:
+            self.log(f"回放录制失败: {str(e)}")
+            QMessageBox.critical(self, "回放失败", f"无法回放录制:\n\n{str(e)}")
     
     def stop_playback_ui(self):
         """停止回放"""
-        if self.recording_controller.stop_playback():
-            self.play_recording_button.setEnabled(True)
-            self.stop_playback_button.setEnabled(False)
+        try:
+            if self.recording_controller.stop_playback():
+                self.play_recording_button.setEnabled(True)
+                self.stop_playback_button.setEnabled(False)
+        except Exception as e:
+            self.log(f"停止回放失败: {str(e)}")
+            QMessageBox.critical(self, "停止失败", f"无法停止回放:\n\n{str(e)}")
     
     def save_shortcuts(self):
         """保存快捷键设置"""
