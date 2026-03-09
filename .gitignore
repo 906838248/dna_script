@@ -186,3 +186,5 @@ config/user_config.json
 rules/mode.md
 
 .trae/rules/mode.md
+fix.txt
+.config

@@ -4,7 +4,7 @@ import pyautogui
 class ScriptRadBall(BaseAutomationThread):
     SCRIPT_NAME = "深红凝珠"
     SCRIPT_DESCRIPTION = "刚需赛琪,带齐奶妈避免血量过低"
-    SCRIPT_IMG_FOLDER = "img/escort"
+    SCRIPT_IMG_FOLDER = "img/rad_ball"
 
     def run(self):  
         for i in range(self.loop_count):
@@ -37,7 +37,7 @@ class ScriptRadBall(BaseAutomationThread):
             self.log_signal.emit("进入游戏,当前为房间一")
 
             self.log_signal.emit("开始走出房间一")
-            self.load_recording("rad_ball/rad_ball_1")
+            self.load_recording("rad_ball/rad_ball")
             self.play_recording()
             self.recorder.wait_for_playback(timeout=60)
             pyautogui.press('q')

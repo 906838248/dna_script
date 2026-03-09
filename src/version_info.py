@@ -28,18 +28,19 @@ class VersionManager:
     
     def __init__(self):
         self.app_name = "二重螺旋 - 统一脚本管理器"
-        self.current_version = "v1.0.2"
+        self.current_version = "v1.1.0"
         self.release_date = "2026-03-07"
         
         # 版本更新日志
         self.update_logs = [
             UpdateLog(
-                version="v1.0.2",
+                version="v1.1.0",
                 date="2026-03-07",
                 changes=[
                     "改回放多线程为多进程",
                     "优化脚本导入,现在可以自动加载scripts文件夹中的脚本",
                     "优化脚本逻辑和命名"
+                    "优化了代码结构"
 
                 ]
             )
