@@ -5,7 +5,7 @@
   <p>
     <img src="https://img.shields.io/badge/platform-Windows-blue" alt="平台">
     <img src="https://img.shields.io/badge/python-3.11+-skyblue" alt="Python版本">
-    <img src="https://img.shields.io/badge/version-v1.0.7-green" alt="版本">
+    <img src="https://img.shields.io/badge/version-v1.1.0-green" alt="版本">
   </p>
 </div>
 
@@ -30,13 +30,16 @@
 - **多脚本支持**
   - 60级魔之楔驱离
   - 40级魔之楔驱离
-  - 机傀大乱斗
-  - 80级护送副本
+  - 60级皎皎币
   - 65级扼守
+  - 机傀大乱斗
+  - 深红凝珠
 
 - **图像识别**
   - 基于OpenCV的图像识别技术
   - 自动识别游戏界面元素
+  - 模板图片缓存机制，避免重复加载
+  - 屏幕截图缓存，减少频繁截图操作
 
 - **录制回放**
   - 支持键盘鼠标操作的录制与回放
@@ -45,6 +48,7 @@
 - **进度追踪**
   - 实时显示脚本执行进度
   - 清晰的循环次数统计
+  - 通用游戏循环方法，减少代码重复
 
 - **日志记录**
   - 详细的运行日志便于调试
@@ -144,42 +148,29 @@
 
 ## 📝 更新日志
 
-### v1.0.7 (2026-03-02)
-- 将快捷键设置单独提取为独立标签页
-- 优化界面布局，提升用户体验
+### v1.1.0 (2026-03-07)
 
-### v1.0.6 (2026-03-02)
-- 优化界面布局，调整窗口宽度和按钮尺寸
-- 修复录制结束时把停止按键录制进去的问题
-- 新增自动跳转日志页面选项，勾选后开始脚本自动跳转到日志页面
+#### 新增功能
+- 添加60级皎皎币脚本
+- 添加深红凝珠脚本
 
-### v1.0.5 (2026-03-02)
-- 优化界面布局
+#### 性能优化
+- 实现模板图片缓存机制，避免重复加载同一模板图片，减少文件I/O和图像解码开销
+- 实现屏幕截图缓存，短时间内多次查找使用同一张截图，减少频繁截图操作
+- 停止时自动清理缓存，释放内存资源
 
-### v1.0.4 (2026-03-02)
-- 修复快捷键无法使用的问题
-- 修复程序图片读取错误的问题
+#### 代码重构
+- 在base_automation.py中实现通用游戏循环方法（run_game_loop和run_game_loop_with_retry）
+- 重构所有脚本使用通用游戏循环方法，减少代码量
+- 优化脚本导入，现在可以自动加载scripts文件夹中的脚本
+- 优化脚本逻辑和命名
 
-### v1.0.3 (2026-03-02)
-- 新增快捷键管理模块 shortcut_manager.py
-- 实现快捷键自定义功能，用户可在版本说明页面修改快捷键
-- 移除底部快捷键说明，统一在版本说明页面显示和设置
-- 支持保存和重置快捷键配置
-- 快捷键配置自动保存到配置文件
-- 程序启动时自动加载上次保存的快捷键配置
-- 优化快捷键管理，使用枚举类型统一管理快捷键操作
-- 提升用户界面整洁度，避免快捷键说明重复显示
+#### 其他改进
+- 改回放多线程为多进程
+- 完善错误处理机制，添加自定义异常类
+- 添加完整的单元测试覆盖（83个测试用例）
+- 优化代码结构和可维护性
 
-### v1.0.2 (2026-03-02)
-- 新增配置管理模块 config_manager.py
-- 实现用户配置自动保存和加载功能
-- 自动记录上次选择的脚本，启动时自动恢复
-- 自动记录上次设置的循环次数，启动时自动恢复
-- 自动记录上次使用的录制名称，启动时自动恢复
-- 配置文件使用 JSON 格式存储在 config 文件夹
-- 程序启动时自动加载上次保存的配置
-- 用户操作时自动保存配置（脚本选择、循环次数、录制名称）
-- 提升用户体验，无需重复设置常用参数
 
 ## ⚠️ 注意事项
 
@@ -193,23 +184,38 @@
 ```
 二重螺旋/
 ├── main.py                 # 主程序入口
+├── run_tests.py            # 测试运行脚本
 ├── src/                    # 源代码目录
-│   ├── base_automation.py  # 自动化基类
+│   ├── base_automation.py  # 自动化基类（含通用游戏循环和缓存机制）
 │   ├── input_recorder.py   # 录制回放模块
 │   ├── config_manager.py   # 配置管理模块
 │   ├── shortcut_manager.py # 快捷键管理模块
 │   ├── styles.py           # 界面样式
-│   └── version_info.py     # 版本信息管理
+│   ├── version_info.py     # 版本信息管理
+│   ├── controllers/        # 控制器目录
+│   │   ├── automation_controller.py  # 自动化控制器
+│   │   └── recording_controller.py   # 录制控制器
+│   └── ui/                 # UI目录
+│       └── main_window.py  # 主窗口
 ├── scripts/                # 脚本目录
-│   ├── script_60_level_expel.py
-│   ├── script_40_level_expel.py
-│   ├── script_mech_chaos_battle.py
-│   ├── script_escort.py
-│   └── script_65_guard.py
+│   ├── __init__.py         # 脚本模块初始化
+│   ├── script_60_level_expel.py    # 60级魔之楔驱离
+│   ├── script_40_level_expel.py    # 40级魔之楔驱离
+│   ├── script_60_coin.py           # 60级皎皎币
+│   ├── script_65_guard.py          # 65级扼守
+│   ├── script_mech_chaos_battle.py # 机傀大乱斗
+│   └── script_rad_ball.py          # 深红凝珠
+├── tests/                  # 测试目录
+│   ├── test_automation_controller.py
+│   ├── test_recording_controller.py
+│   ├── test_script_refactoring.py
+│   └── test_performance_optimization.py
 ├── img/                    # 图像素材目录
 │   ├── common/
+│   ├── coin/
+│   ├── guard/
 │   ├── mech_chaos_battle/
-│   └── escort/
+│   └── rad_ball/
 ├── recordings/             # 录制文件目录
 └── config/                 # 配置文件目录
 ```
