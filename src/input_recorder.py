@@ -157,6 +157,37 @@ class InputRecorder:
         self.last_mouse_pos = None  # 上一次鼠标位置
         self.pressed_keys = set()  # 当前按下的键集合
         self.recording_lock = threading.Lock()  # 录制锁，保证线程安全
+    
+    def __enter__(self):
+        """
+        上下文管理器入口
+        
+        Returns:
+            InputRecorder实例
+        """
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        上下文管理器出口，确保资源正确释放
+        
+        Args:
+            exc_type: 异常类型
+            exc_val: 异常值
+            exc_tb: 异常追踪信息
+            
+        Returns:
+            False表示不抑制异常
+        """
+        # 停止录制
+        if self.is_recording:
+            self.stop_recording()
+        
+        # 停止回放
+        if self.is_playing:
+            self.stop_playback()
+        
+        return False
         
     def start_recording(self, mouse_mode: str = 'relative', min_mouse_move: int = 3):
         """
@@ -543,6 +574,29 @@ class RecordingManager:
         """
         self.recordings_dir = recordings_dir
         self.ensure_recordings_dir()
+    
+    def __enter__(self):
+        """
+        上下文管理器入口
+        
+        Returns:
+            RecordingManager实例
+        """
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        上下文管理器出口
+        
+        Args:
+            exc_type: 异常类型
+            exc_val: 异常值
+            exc_tb: 异常追踪信息
+            
+        Returns:
+            False表示不抑制异常
+        """
+        return False
     
     def ensure_recordings_dir(self):
         """确保录制目录存在"""

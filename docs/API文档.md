@@ -554,7 +554,51 @@ if self.delete_recording("old_recording"):
 
 ---
 
-### 9. 其他方法
+### 9. 上下文管理器支持
+
+`InputRecorder` 和 `RecordingManager` 都支持上下文管理器（`with` 语句），确保资源正确释放。
+
+#### InputRecorder 上下文管理器
+
+**描述**: 使用 `with` 语句自动管理录制器资源
+
+**说明**: 
+- 退出上下文时自动停止录制和回放
+- 即使发生异常也能正确清理资源
+
+**示例**:
+```python
+# 使用上下文管理器
+with InputRecorder() as recorder:
+    recorder.start_recording()
+    # ... 执行操作 ...
+    # 退出时自动调用 stop_recording()
+
+# 带异常处理的用法
+try:
+    with InputRecorder() as recorder:
+        recorder.start_recording()
+        # 可能抛出异常的代码
+        raise ValueError("Some error")
+except ValueError:
+    # 异常被正常抛出，但资源已清理
+    pass
+```
+
+#### RecordingManager 上下文管理器
+
+**描述**: 使用 `with` 语句管理录制管理器
+
+**示例**:
+```python
+with RecordingManager("recordings") as manager:
+    recordings = manager.list_recordings()
+    # ... 使用管理器 ...
+```
+
+---
+
+### 10. 其他方法
 
 #### `random_space_press(self)`
 
@@ -824,5 +868,5 @@ class RobustScript(BaseAutomationThread):
 
 ## 版本信息
 
-- 文档版本: 1.0.0
+- 文档版本: 1.1.0
 - 最后更新: 2026-03-10
