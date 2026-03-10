@@ -5,13 +5,16 @@ import multiprocessing
 import keyboard
 import pynput
 from pynput import mouse
-from typing import List, Dict, Callable, Optional
+from typing import List, Dict, Callable, Optional, TYPE_CHECKING, Any
 import os
+
+if TYPE_CHECKING:
+    from multiprocessing import Event, Queue
 
 
 def _playback_worker(actions: List[Dict], speed_multiplier: float, 
-                     stop_event: multiprocessing.Event, 
-                     status_queue: multiprocessing.Queue):
+                     stop_event: Any, 
+                     status_queue: Any):
     """
     回放工作进程函数
     
@@ -147,14 +150,14 @@ class InputRecorder:
         self.recorded_actions: List[Dict] = []  # 记录的操作列表
         self.start_time: float = 0  # 录制开始时间
         self.play_process: Optional[multiprocessing.Process] = None  # 回放进程
-        self.stop_event: Optional[multiprocessing.Event] = None  # 停止事件
-        self.status_queue: Optional[multiprocessing.Queue] = None  # 状态队列
+        self.stop_event: Optional[Any] = None  # 停止事件
+        self.status_queue: Optional[Any] = None  # 状态队列
         self.mouse_mode = mouse_mode  # 鼠标录制模式
         self.min_mouse_move = min_mouse_move  # 最小鼠标移动距离
         
         self.mouse_listener: Optional[mouse.Listener] = None  # 鼠标监听器
         self.keyboard_hook = None  # 键盘钩子
-        self.last_mouse_pos = None  # 上一次鼠标位置
+        self.last_mouse_pos: Optional[Tuple[int, int]] = None  # 上一次鼠标位置
         self.pressed_keys = set()  # 当前按下的键集合
         self.recording_lock = threading.Lock()  # 录制锁，保证线程安全
     
@@ -371,7 +374,7 @@ class InputRecorder:
         )
         self.mouse_listener.start()
     
-    def stop_recording(self):
+    def stop_recording(self) -> bool:
         """
         停止录制
         
@@ -498,16 +501,17 @@ class InputRecorder:
         start_time = time.time()
         while self.is_playing and self.play_process and self.play_process.is_alive():
             # 检查状态队列
-            try:
-                status, _ = self.status_queue.get_nowait()
-                if status == 'finished':
-                    self.is_playing = False
-                    return True
-                elif status == 'error':
-                    self.is_playing = False
-                    return False
-            except:
-                pass
+            if self.status_queue:
+                try:
+                    status, _ = self.status_queue.get_nowait()
+                    if status == 'finished':
+                        self.is_playing = False
+                        return True
+                    elif status == 'error':
+                        self.is_playing = False
+                        return False
+                except:
+                    pass
             
             if time.time() - start_time > timeout:
                 return False
@@ -515,16 +519,17 @@ class InputRecorder:
         
         # 进程结束后，再次检查状态队列
         while self.is_playing:
-            try:
-                status, _ = self.status_queue.get(timeout=0.5)
-                if status == 'finished':
-                    self.is_playing = False
-                    return True
-                elif status == 'error':
-                    self.is_playing = False
-                    return False
-            except:
-                break
+            if self.status_queue:
+                try:
+                    status, _ = self.status_queue.get(timeout=0.5)
+                    if status == 'finished':
+                        self.is_playing = False
+                        return True
+                    elif status == 'error':
+                        self.is_playing = False
+                        return False
+                except:
+                    break
         
         return True
     
@@ -554,7 +559,7 @@ class InputRecorder:
         """
         return len(self.recorded_actions)
     
-    def clear_recording(self):
+    def clear_recording(self) -> None:
         """清空录制"""
         self.recorded_actions = []
         self.start_time = 0
@@ -598,7 +603,7 @@ class RecordingManager:
         """
         return False
     
-    def ensure_recordings_dir(self):
+    def ensure_recordings_dir(self) -> None:
         """确保录制目录存在"""
         if not os.path.exists(self.recordings_dir):
             os.makedirs(self.recordings_dir)

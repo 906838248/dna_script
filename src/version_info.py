@@ -48,7 +48,8 @@ class VersionManager:
                     "内存管理 - 停止时自动清理缓存，释放内存资源",
                     "优化配置相关代码",
                     "优化了日志记录机制"
-                    "资源管理优化 - InputRecorder和RecordingManager支持上下文管理器"
+                    "资源管理优化 - InputRecorder和RecordingManager支持上下文管理器",
+                    "添加类型注解 - 提高代码可读性和维护性"
 
                 ]
             )

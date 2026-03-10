@@ -50,7 +50,7 @@ class LogManager:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, log_dir: str = None, log_level: int = logging.DEBUG):
+    def __init__(self, log_dir: Optional[str] = None, log_level: int = logging.DEBUG):
         """
         初始化日志管理器
         
@@ -62,7 +62,7 @@ class LogManager:
             return
         
         if log_dir is None:
-            self.log_dir = Path(__file__).parent.parent / "logs"
+            self.log_dir: Path = Path(__file__).parent.parent / "logs"
         else:
             self.log_dir = Path(log_dir)
         
@@ -71,7 +71,7 @@ class LogManager:
         self.logger.setLevel(log_level)
         
         # 初始化信号处理器属性
-        self.signal_handler = None
+        self.signal_handler: Optional[SignalLogHandler] = None
         
         # 防止重复添加处理器
         if not self.logger.handlers:
@@ -136,7 +136,7 @@ class LogManager:
         """
         return self.logger
     
-    def get_signal_handler(self) -> SignalLogHandler:
+    def get_signal_handler(self) -> Optional[SignalLogHandler]:
         """
         获取信号处理器，用于连接UI
         

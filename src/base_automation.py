@@ -7,6 +7,7 @@ import pyautogui
 import pydirectinput
 import keyboard
 import random
+from typing import Optional, Tuple, Dict, Any, Callable
 
 # Windows平台DPI感知设置，防止在高DPI屏幕上出现坐标偏移
 if sys.platform == 'win32':
@@ -19,6 +20,7 @@ if sys.platform == 'win32':
 from PySide6.QtCore import QThread, Signal
 from src.input_recorder import InputRecorder, RecordingManager
 from src.log_manager import log_manager
+from src.constants import GameConstants, LogLevels, MouseModes
 
 # 设置pyautogui全局参数
 pyautogui.PAUSE = 0.1  # 每次操作后的默认暂停时间
@@ -36,7 +38,7 @@ class BaseAutomationThread(QThread):
     progress_signal = Signal(int, int)  # 进度信号，参数为(当前循环, 总循环)
     recording_state_signal = Signal(bool, int)  # 录制状态信号，参数为(是否录制中, 操作数)
 
-    def __init__(self, loop_count, img_folder):
+    def __init__(self, loop_count: int, img_folder: str):
         """
         初始化自动化线程
         
@@ -55,12 +57,12 @@ class BaseAutomationThread(QThread):
         self.recording_manager = RecordingManager(os.path.join(project_root, "recordings"))  # 录制管理器
         
         # 模板图片缓存，避免重复加载
-        self.template_cache = {}
+        self.template_cache: Dict[str, Any] = {}
         
         # 屏幕截图缓存，减少频繁截图
-        self.screenshot_cache = None
-        self.screenshot_cache_time = 0
-        self.screenshot_cache_ttl = 0.1  # 缓存有效期（秒）
+        self.screenshot_cache: Optional[Any] = None
+        self.screenshot_cache_time: float = 0
+        self.screenshot_cache_ttl = GameConstants.SCREENSHOT_CACHE_TTL  # 缓存有效期（秒）
 
     def stop(self):
         """停止自动化线程"""
@@ -92,7 +94,7 @@ class BaseAutomationThread(QThread):
         else:
             log_manager.info(message)
 
-    def random_delay(self, min_delay=0.5, max_delay=2.0):
+    def random_delay(self, min_delay: float = GameConstants.MIN_DELAY, max_delay: float = GameConstants.MAX_DELAY) -> float:
         """
         随机延迟，模拟人类操作间隔
         
@@ -107,21 +109,21 @@ class BaseAutomationThread(QThread):
         self.interruptible_sleep(delay)
         return delay
 
-    def interruptible_sleep(self, duration):
+    def interruptible_sleep(self, duration: float) -> None:
         """
         可中断的睡眠函数，在sleep期间可以响应停止信号
         
         Args:
             duration: 睡眠时长（秒）
         """
-        check_interval = 0.1  # 检查间隔
-        elapsed = 0
+        check_interval = GameConstants.CHECK_INTERVAL  # 检查间隔
+        elapsed: float = 0
         while elapsed < duration and self.running:
             sleep_time = min(check_interval, duration - elapsed)
             time.sleep(sleep_time)
             elapsed += sleep_time
 
-    def human_like_move(self, target_x, target_y):
+    def human_like_move(self, target_x: int, target_y: int) -> None:
         """
         模拟人类鼠标移动，使用贝塞尔曲线生成平滑轨迹
         
@@ -135,13 +137,13 @@ class BaseAutomationThread(QThread):
         dy = target_y - current_y
         
         # 如果移动距离很小，直接返回
-        if abs(dx) < 5 and abs(dy) < 5:
+        if abs(dx) < GameConstants.MIN_MOUSE_MOVE_DISTANCE and abs(dy) < GameConstants.MIN_MOUSE_MOVE_DISTANCE:
             return
         
         # 计算移动步数，根据距离动态调整
-        steps = max(3, min(5, int((dx**2 + dy**2)**0.5 / 100)))
-        previous_accumulated_x = 0
-        previous_accumulated_y = 0
+        steps = max(GameConstants.MOUSE_MOVE_STEPS_MIN, min(GameConstants.MOUSE_MOVE_STEPS_MAX, int((dx**2 + dy**2)**0.5 / GameConstants.MOUSE_MOVE_STEP_SIZE)))
+        previous_accumulated_x: float = 0
+        previous_accumulated_y: float = 0
         
         # 使用贝塞尔曲线生成平滑移动轨迹
         for i in range(steps):
@@ -163,7 +165,7 @@ class BaseAutomationThread(QThread):
             previous_accumulated_x = current_accumulated_x
             previous_accumulated_y = current_accumulated_y
 
-    def human_like_move_rel(self, dx, dy):
+    def human_like_move_rel(self, dx: int, dy: int) -> None:
         """
         相对坐标的人类化鼠标移动
         
@@ -171,12 +173,12 @@ class BaseAutomationThread(QThread):
             dx: X轴相对移动距离
             dy: Y轴相对移动距离
         """
-        if abs(dx) < 5 and abs(dy) < 5:
+        if abs(dx) < GameConstants.MIN_MOUSE_MOVE_DISTANCE and abs(dy) < GameConstants.MIN_MOUSE_MOVE_DISTANCE:
             return
         
-        steps = max(3, min(5, int((dx**2 + dy**2)**0.5 / 100)))
-        previous_accumulated_x = 0
-        previous_accumulated_y = 0
+        steps = max(GameConstants.MOUSE_MOVE_STEPS_MIN, min(GameConstants.MOUSE_MOVE_STEPS_MAX, int((dx**2 + dy**2)**0.5 / GameConstants.MOUSE_MOVE_STEP_SIZE)))
+        previous_accumulated_x: float = 0
+        previous_accumulated_y: float = 0
         
         for i in range(steps):
             progress = (i + 1) / steps
@@ -196,7 +198,7 @@ class BaseAutomationThread(QThread):
             previous_accumulated_x = current_accumulated_x
             previous_accumulated_y = current_accumulated_y
 
-    def find_image(self, image_name, confidence=0.8, timeout=30):
+    def find_image(self, image_name: str, confidence: float = GameConstants.DEFAULT_CONFIDENCE, timeout: int = GameConstants.DEFAULT_TIMEOUT) -> Optional[Tuple[int, int]]:
         """
         在屏幕上查找指定图片
         
@@ -241,11 +243,11 @@ class BaseAutomationThread(QThread):
                 center_y = max_loc[1] + h // 2
                 return (center_x, center_y)
             
-            self.interruptible_sleep(0.5)
+            self.interruptible_sleep(GameConstants.CHECK_INTERVAL)
         
         return None
 
-    def click_image(self, image_name, confidence=0.8, timeout=30):
+    def click_image(self, image_name: str, confidence: float = GameConstants.DEFAULT_CONFIDENCE, timeout: int = GameConstants.DEFAULT_TIMEOUT) -> bool:
         """
         查找并点击指定图片
         
@@ -261,30 +263,30 @@ class BaseAutomationThread(QThread):
         if position:
             self.human_like_move(position[0], position[1])
             pydirectinput.click()
-            self.random_delay(0.3, 0.8)
+            self.random_delay(GameConstants.CLICK_MIN_DELAY, GameConstants.CLICK_MAX_DELAY)
             self.log_signal.emit(f"点击 {image_name} 成功")
             return True
         else:
             self.log_signal.emit(f"未找到 {image_name}")
             return False
 
-    def run(self):
+    def run(self) -> None:
         """
         子类必须实现的主运行方法
         """
         raise NotImplementedError("子类必须实现 run 方法")
     
-    def random_space_press(self):
+    def random_space_press(self) -> None:
         """
         随机按下空格键0-6次，用于反检测
         """
         self.log_signal.emit("随机按下空格键")
-        for _ in range(random.randint(0, 6)):
+        for _ in range(random.randint(GameConstants.MIN_SPACE_PRESS, GameConstants.MAX_SPACE_PRESS)):
                 pydirectinput.press('space')
                 self.log_signal.emit("按下空格键")
-                self.random_delay(0.5, 1.2)
+                self.random_delay(GameConstants.SPACE_PRESS_MIN_DELAY, GameConstants.SPACE_PRESS_MAX_DELAY)
     
-    def game_again(self, again_timeout=240, begin_timeout=5, in_game_timeout=30):
+    def game_again(self, again_timeout: int = GameConstants.AGAIN_TIMEOUT, begin_timeout: int = GameConstants.BEGIN_TIMEOUT, in_game_timeout: int = GameConstants.IN_GAME_TIMEOUT) -> bool:
         """
         游戏重开流程：点击again -> begin -> 等待进入游戏
         
@@ -322,7 +324,7 @@ class BaseAutomationThread(QThread):
         finally:
             self.img_folder = original_img_folder
     
-    def game_retry(self, exit_timeout=5, sure_timeout=5):
+    def game_retry(self, exit_timeout: int = GameConstants.EXIT_TIMEOUT, sure_timeout: int = GameConstants.SURE_TIMEOUT) -> bool:
         """
         游戏重试流程：按ESC -> 点击exit -> 点击sure
         
@@ -340,13 +342,13 @@ class BaseAutomationThread(QThread):
         try:
             keyboard.press_and_release('esc')
             
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             
             if not self.click_image("exit.png", timeout=exit_timeout):
                 self.log_signal.emit("点击 exit 失败，停止循环")
                 return False
             
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             
             if not self.click_image("sure.png", timeout=sure_timeout):
                 self.log_signal.emit("点击 sure 失败，停止循环")
@@ -356,7 +358,7 @@ class BaseAutomationThread(QThread):
         finally:
             self.img_folder = original_img_folder
     
-    def game_first(self, first_timeout=5, begin_timeout=5, in_game_timeout=30):
+    def game_first(self, first_timeout: int = GameConstants.FIRST_TIMEOUT, begin_timeout: int = GameConstants.BEGIN_TIMEOUT, in_game_timeout: int = GameConstants.IN_GAME_TIMEOUT) -> bool:
         """
         游戏首次开始流程：点击first -> begin -> 等待进入游戏
         
@@ -380,7 +382,7 @@ class BaseAutomationThread(QThread):
                     self.log_signal.emit("点击 sure_choose 失败，停止循环")
                     return False
             
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             
             if not self.click_image("begin.png", timeout=begin_timeout):
                 self.log_signal.emit("点击 begin 失败，停止循环")
@@ -395,7 +397,7 @@ class BaseAutomationThread(QThread):
         finally:
             self.img_folder = original_img_folder
     
-    def reset_position(self, set_timeout=5, else_timeout=5, reset_timeout=5, sure_timeout=5):
+    def reset_position(self, set_timeout: int = GameConstants.SET_TIMEOUT, else_timeout: int = GameConstants.ELSE_TIMEOUT, reset_timeout: int = GameConstants.RESET_TIMEOUT, sure_timeout: int = GameConstants.SURE_TIMEOUT) -> bool:
         """
         游戏重置位置流程：按ESC -> 点击set -> 点击else -> 点击reset -> 点击sure
         
@@ -413,22 +415,22 @@ class BaseAutomationThread(QThread):
         self.img_folder = os.path.join(script_dir, "img/common")
         try:
             pyautogui.press('esc')
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             if not self.click_image("set.png", timeout=set_timeout):
                 self.log_signal.emit("点击 set 失败，停止循环")
                 return False
             
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             if not self.click_image("else.png", timeout=else_timeout):
                 self.log_signal.emit("点击 else 失败，停止循环")
                 return False
             
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             if not self.click_image("reset.png", timeout=reset_timeout):
                 self.log_signal.emit("点击 reset 失败，停止循环")
                 return False
             
-            self.random_delay(1.5, 2.5)
+            self.random_delay(GameConstants.LOOP_MIN_DELAY, GameConstants.LOOP_MAX_DELAY)
             if not self.click_image("sure.png", timeout=sure_timeout):
                 self.log_signal.emit("点击 sure 失败，停止循环")
                 return False
@@ -437,7 +439,7 @@ class BaseAutomationThread(QThread):
         finally:
             self.img_folder = original_img_folder
     
-    def run_game_loop(self, game_logic_callback, first_timeout=5, again_timeout=600, retry_timeout=5):
+    def run_game_loop(self, game_logic_callback: Callable[[], bool], first_timeout: int = GameConstants.FIRST_TIMEOUT, again_timeout: int = GameConstants.AGAIN_TIMEOUT, retry_timeout: int = GameConstants.RETRY_TIMEOUT) -> bool:
         """
         通用的游戏循环执行方法
         
@@ -500,7 +502,7 @@ class BaseAutomationThread(QThread):
         
         return True
     
-    def run_game_loop_with_retry(self, game_logic_callback, max_retries=2, first_timeout=5, again_timeout=600, retry_timeout=5):
+    def run_game_loop_with_retry(self, game_logic_callback: Callable[[], bool], max_retries: int = GameConstants.DEFAULT_MAX_RETRIES, first_timeout: int = GameConstants.FIRST_TIMEOUT, again_timeout: int = GameConstants.AGAIN_TIMEOUT, retry_timeout: int = GameConstants.RETRY_TIMEOUT) -> bool:
         """
         通用的游戏循环执行方法（带重试机制）
         
@@ -609,7 +611,7 @@ class BaseAutomationThread(QThread):
             return True
         return False
 
-    def save_recording(self, name):
+    def save_recording(self, name: str) -> None:
         """
         保存录制到文件
         
@@ -620,7 +622,7 @@ class BaseAutomationThread(QThread):
         self.recorder.save_to_file(filepath)
         self.log_signal.emit(f"录制已保存到: {filepath}")
 
-    def load_recording(self, name):
+    def load_recording(self, name: str) -> bool:
         """
         从文件加载录制
         
@@ -641,7 +643,7 @@ class BaseAutomationThread(QThread):
             self.log_signal.emit(f"录制文件不存在: {filepath}")
             return False
 
-    def play_recording(self, speed_multiplier=1.0):
+    def play_recording(self, speed_multiplier: float = GameConstants.DEFAULT_SPEED_MULTIPLIER) -> bool:
         """
         回放录制
         
@@ -662,12 +664,12 @@ class BaseAutomationThread(QThread):
             return True
         return False
 
-    def stop_playback(self):
+    def stop_playback(self) -> None:
         """停止回放"""
         self.recorder.stop_playback()
         self.log_signal.emit("已停止回放")
 
-    def list_recordings(self):
+    def list_recordings(self) -> list:
         """
         列出所有可用的录制
         
@@ -681,7 +683,7 @@ class BaseAutomationThread(QThread):
             self.log_signal.emit("没有可用的录制")
         return recordings
 
-    def delete_recording(self, name):
+    def delete_recording(self, name: str) -> bool:
         """
         删除指定录制
         
