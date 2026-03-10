@@ -2,6 +2,7 @@
 录制控制器
 管理录制、保存、加载和回放功能
 增强错误处理和异常管理
+使用任务执行器确保耗时操作在工作线程中执行
 """
 
 import os
@@ -9,6 +10,7 @@ import json
 from PySide6.QtCore import QObject, Signal
 from typing import Optional, List
 from src.input_recorder import InputRecorder, RecordingManager
+from src.task_executor import TaskExecutor
 
 
 class RecordingError(Exception):
@@ -98,6 +100,9 @@ class RecordingController(QObject):
         self.is_recording = False
         self.is_playing = False
         self.last_error = None
+        self.task_executor = TaskExecutor()
+        self.task_executor.task_finished.connect(self._on_task_finished)
+        self.task_executor.task_error.connect(self._on_task_error)
     
     def start_recording(self, mouse_mode='relative', min_mouse_move=3):
         """
@@ -220,36 +225,23 @@ class RecordingController(QObject):
             self.error_signal.emit("RecordingSaveError", error_msg)
             raise RecordingSaveError(error_msg)
         
-        try:
+        def save_task():
             filepath = self.recording_manager.get_recording_path(name)
             
             if not os.path.exists(os.path.dirname(filepath)):
                 error_msg = f"录制目录不存在: {os.path.dirname(filepath)}"
-                self.log_signal.emit(error_msg)
-                self.error_signal.emit("RecordingSaveError", error_msg)
                 raise RecordingSaveError(error_msg)
             
             self.recorder.save_to_file(filepath)
-            self.log_signal.emit(f"录制已保存到: {filepath}")
-            return True
-            
-        except (InvalidParameterError, RecordingSaveError):
-            raise
-        except PermissionError as e:
-            error_msg = f"没有保存权限: {str(e)}"
+            return filepath
+        
+        if not self.task_executor.execute_task(save_task):
+            error_msg = "任务执行器忙碌，无法保存录制"
             self.log_signal.emit(error_msg)
-            self.error_signal.emit("PermissionError", error_msg)
-            raise RecordingSaveError(error_msg) from e
-        except OSError as e:
-            error_msg = f"文件系统错误: {str(e)}"
-            self.log_signal.emit(error_msg)
-            self.error_signal.emit("OSError", error_msg)
-            raise RecordingSaveError(error_msg) from e
-        except Exception as e:
-            error_msg = f"保存录制时发生未知错误: {str(e)}"
-            self.log_signal.emit(error_msg)
-            self.error_signal.emit("UnknownError", error_msg)
-            raise RecordingSaveError(error_msg) from e
+            self.error_signal.emit("TaskExecutorError", error_msg)
+            raise RecordingSaveError(error_msg)
+        
+        return True
     
     def load_recording(self, name):
         """
@@ -274,49 +266,31 @@ class RecordingController(QObject):
         
         name = name.strip()
         
-        try:
+        def load_task():
             filepath = self.recording_manager.get_recording_path(name)
             
             if not os.path.exists(filepath):
                 error_msg = f"录制文件不存在: {filepath}"
-                self.log_signal.emit(error_msg)
-                self.error_signal.emit("RecordingNotFoundError", error_msg)
                 raise RecordingNotFoundError(error_msg)
             
             if not filepath.endswith('.json'):
                 error_msg = f"无效的录制文件格式: {filepath}"
-                self.log_signal.emit(error_msg)
-                self.error_signal.emit("RecordingLoadError", error_msg)
                 raise RecordingLoadError(error_msg)
             
             if self.recorder.load_from_file(filepath):
                 count = self.recorder.get_action_count()
-                self.log_signal.emit(f"已加载录制: {name} ({count} 个操作)")
-                self.state_changed_signal.emit(False, count)
-                return True
+                return count
             else:
                 error_msg = f"加载录制失败: {name}"
-                self.log_signal.emit(error_msg)
-                self.error_signal.emit("RecordingLoadError", error_msg)
                 raise RecordingLoadError(error_msg)
-                
-        except (InvalidParameterError, RecordingNotFoundError, RecordingLoadError):
-            raise
-        except json.JSONDecodeError as e:
-            error_msg = f"录制文件格式错误（JSON解析失败）: {str(e)}"
+        
+        if not self.task_executor.execute_task(load_task):
+            error_msg = "任务执行器忙碌，无法加载录制"
             self.log_signal.emit(error_msg)
-            self.error_signal.emit("JSONDecodeError", error_msg)
-            raise RecordingLoadError(error_msg) from e
-        except PermissionError as e:
-            error_msg = f"没有读取权限: {str(e)}"
-            self.log_signal.emit(error_msg)
-            self.error_signal.emit("PermissionError", error_msg)
-            raise RecordingLoadError(error_msg) from e
-        except Exception as e:
-            error_msg = f"加载录制时发生未知错误: {str(e)}"
-            self.log_signal.emit(error_msg)
-            self.error_signal.emit("UnknownError", error_msg)
-            raise RecordingLoadError(error_msg) from e
+            self.error_signal.emit("TaskExecutorError", error_msg)
+            raise RecordingLoadError(error_msg)
+        
+        return True
     
     def play_recording(self, speed_multiplier=1.0, stop_callback=None):
         """
@@ -537,5 +511,34 @@ class RecordingController(QObject):
                     self.stop_playback()
                 except Exception as e:
                     self.log_signal.emit(f"清理回放时发生错误: {str(e)}")
+            
+            self.task_executor.cleanup()
         except Exception as e:
             self.log_signal.emit(f"清理资源时发生错误: {str(e)}")
+    
+    def _on_task_finished(self, result):
+        """
+        任务完成时的回调
+        
+        Args:
+            result: 任务结果
+        """
+        if isinstance(result, str) and result.endswith('.json'):
+            self.log_signal.emit(f"录制已保存到: {result}")
+        elif isinstance(result, int):
+            self.log_signal.emit(f"已加载录制 ({result} 个操作)")
+            self.state_changed_signal.emit(False, result)
+        else:
+            self.log_signal.emit(f"任务完成: {result}")
+    
+    def _on_task_error(self, error_type: str, error_msg: str):
+        """
+        任务出错时的回调
+        
+        Args:
+            error_type: 错误类型
+            error_msg: 错误消息
+        """
+        self.last_error = f"{error_type}: {error_msg}"
+        self.log_signal.emit(f"任务错误 [{error_type}]: {error_msg}")
+        self.error_signal.emit(error_type, error_msg)
