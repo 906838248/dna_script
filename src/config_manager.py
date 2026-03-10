@@ -12,6 +12,48 @@ from pathlib import Path
 class ConfigManager:
     """配置管理器类"""
     
+    # 默认配置作为类属性，便于访问和验证
+    DEFAULT_CONFIG = {
+        "script": {
+            "last_selected": None,
+            "last_loop_count": 1,
+            "auto_switch_to_log": False
+        },
+        "recording": {
+            "last_name": ""
+        },
+        "window": {
+            "width": 900,
+            "height": 700
+        },
+        "shortcuts": {
+            "start_automation": "F5",
+            "stop_automation": "F6",
+            "clear_log": "F7",
+            "toggle_recording": "F8",
+            "stop_recording_playback": "esc"
+        }
+    }
+    
+    # 配置验证规则
+    VALIDATION_RULES = {
+        "script.last_loop_count": {
+            "type": int,
+            "min": 1,
+            "max": 9999
+        },
+        "window.width": {
+            "type": int,
+            "min": 800,
+            "max": 3840
+        },
+        "window.height": {
+            "type": int,
+            "min": 600,
+            "max": 2160
+        }
+    }
+    
     def __init__(self, config_dir: str = None, config_filename: str = "user_config.json"):
         """
         初始化配置管理器
@@ -47,6 +89,12 @@ class ConfigManager:
             if self.config_file.exists():
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     self.config_data = json.load(f)
+                
+                # 验证并修复配置
+                if not self.validate_config():
+                    print("配置验证失败，正在修复...")
+                    self.validate_and_fix_config()
+                
                 return True
             else:
                 self.config_data = self._get_default_config()
@@ -78,27 +126,7 @@ class ConfigManager:
         Returns:
             Dict[str, Any]: 默认配置字典
         """
-        return {
-            "script": {
-                "last_selected": None,
-                "last_loop_count": 1,
-                "auto_switch_to_log": False
-            },
-            "recording": {
-                "last_name": ""
-            },
-            "window": {
-                "width": 900,
-                "height": 700
-            },
-            "shortcuts": {
-                "start_automation": "F5",
-                "stop_automation": "F6",
-                "clear_log": "F7",
-                "toggle_recording": "F8",
-                "stop_recording_playback": "esc"
-            }
-        }
+        return self.DEFAULT_CONFIG.copy()
     
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -136,12 +164,33 @@ class ConfigManager:
         keys = key.split('.')
         data = self.config_data
         
+        # 保存旧值以便回滚
+        old_value = None
+        key_exists = False
+        
         for k in keys[:-1]:
             if k not in data:
                 data[k] = {}
             data = data[k]
         
+        # 检查键是否存在并保存旧值
+        if keys[-1] in data:
+            old_value = data[keys[-1]]
+            key_exists = True
+        
+        # 设置新值
         data[keys[-1]] = value
+        
+        # 验证配置是否有效
+        if not self.validate_config():
+            print(f"配置验证失败: {key}={value}")
+            # 回滚更改
+            if key_exists:
+                data[keys[-1]] = old_value
+            else:
+                del data[keys[-1]]
+            return False
+        
         return self.save_config()
     
     def get_last_selected_script(self) -> Optional[str]:
@@ -283,6 +332,176 @@ class ConfigManager:
         """
         self.config_data = self._get_default_config()
         return self.save_config()
+    
+    def validate_config(self, config_data: Dict[str, Any] = None) -> bool:
+        """
+        验证配置数据的有效性
+        
+        Args:
+            config_data: 要验证的配置数据，如果为None则验证当前配置
+            
+        Returns:
+            bool: 配置是否有效
+        """
+        if config_data is None:
+            config_data = self.config_data
+        
+        try:
+            # 验证循环次数（如果存在）
+            loop_count = self._get_nested_value(config_data, "script.last_loop_count")
+            if loop_count is not None:
+                if not isinstance(loop_count, int) or loop_count < 1 or loop_count > 9999:
+                    return False
+            
+            # 验证窗口大小（如果存在）
+            width = self._get_nested_value(config_data, "window.width")
+            if width is not None:
+                if not isinstance(width, int) or width < 800 or width > 3840:
+                    return False
+            
+            height = self._get_nested_value(config_data, "window.height")
+            if height is not None:
+                if not isinstance(height, int) or height < 600 or height > 2160:
+                    return False
+            
+            # 验证快捷键（如果存在）
+            shortcuts = self._get_nested_value(config_data, "shortcuts")
+            if shortcuts is not None:
+                if not isinstance(shortcuts, dict):
+                    return False
+                for action, shortcut in shortcuts.items():
+                    if not self._validate_shortcut(shortcut):
+                        return False
+            
+            return True
+        except Exception as e:
+            print(f"配置验证异常: {e}")
+            return False
+    
+    def _validate_shortcut(self, shortcut: Any) -> bool:
+        """
+        验证快捷键的有效性
+        
+        Args:
+            shortcut: 快捷键字符串
+            
+        Returns:
+            bool: 快捷键是否有效
+        """
+        if not isinstance(shortcut, str):
+            return False
+        
+        # 快捷键不能为空或只包含空格
+        if not shortcut.strip():
+            return False
+        
+        # 快捷键长度限制（防止过长）
+        if len(shortcut) > 50:
+            return False
+        
+        # 允许的快捷键格式：字母、数字、功能键、特殊键
+        valid_keys = [
+            'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+            'esc', 'enter', 'space', 'tab', 'backspace', 'delete', 'insert',
+            'home', 'end', 'pageup', 'pagedown',
+            'up', 'down', 'left', 'right',
+            'ctrl', 'alt', 'shift'
+        ]
+        
+        # 检查是否是有效的单键
+        if shortcut.lower() in valid_keys:
+            return True
+        
+        # 检查是否是单个字母或数字
+        if len(shortcut) == 1 and (shortcut.isalpha() or shortcut.isdigit()):
+            return True
+        
+        # 检查组合键（如 ctrl+a, alt+f4 等）
+        if '+' in shortcut:
+            parts = [part.strip().lower() for part in shortcut.split('+')]
+            if len(parts) >= 2:
+                # 每个部分都应该是有效的键
+                for part in parts:
+                    if part not in valid_keys and not (len(part) == 1 and (part.isalpha() or part.isdigit())):
+                        return False
+                return True
+        
+        return False
+    
+    def _get_nested_value(self, data: Dict[str, Any], key: str) -> Any:
+        """
+        获取嵌套字典中的值
+        
+        Args:
+            data: 字典数据
+            key: 点号分隔的键（如 "script.last_loop_count"）
+            
+        Returns:
+            Any: 找到的值，如果不存在则返回 None
+        """
+        keys = key.split('.')
+        value = data
+        
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                return None
+        
+        return value
+    
+    def validate_and_fix_config(self) -> bool:
+        """
+        验证并修复配置，将无效值替换为默认值
+        
+        Returns:
+            bool: 是否修复了配置
+        """
+        fixed = False
+        
+        # 确保配置结构存在
+        if "script" not in self.config_data:
+            self.config_data["script"] = {}
+            fixed = True
+        if "window" not in self.config_data:
+            self.config_data["window"] = {}
+            fixed = True
+        if "shortcuts" not in self.config_data:
+            self.config_data["shortcuts"] = {}
+            fixed = True
+        
+        # 验证并修复循环次数
+        loop_count = self.get("script.last_loop_count")
+        if not isinstance(loop_count, int) or loop_count < 1 or loop_count > 9999:
+            self.config_data["script"]["last_loop_count"] = 1
+            fixed = True
+        
+        # 验证并修复窗口大小
+        width = self.get("window.width")
+        if not isinstance(width, int) or width < 800 or width > 3840:
+            self.config_data["window"]["width"] = 900
+            fixed = True
+        
+        height = self.get("window.height")
+        if not isinstance(height, int) or height < 600 or height > 2160:
+            self.config_data["window"]["height"] = 700
+            fixed = True
+        
+        # 验证并修复快捷键
+        shortcuts = self.get("shortcuts", {})
+        if not isinstance(shortcuts, dict):
+            self.config_data["shortcuts"] = self.DEFAULT_CONFIG["shortcuts"].copy()
+            fixed = True
+        else:
+            for action, default_shortcut in self.DEFAULT_CONFIG["shortcuts"].items():
+                if action not in shortcuts or not self._validate_shortcut(shortcuts.get(action)):
+                    self.config_data["shortcuts"][action] = default_shortcut
+                    fixed = True
+        
+        if fixed:
+            self.save_config()
+        
+        return fixed
     
     def get_all_config(self) -> Dict[str, Any]:
         """
