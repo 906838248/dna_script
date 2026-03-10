@@ -191,3 +191,5 @@ fix.txt
 run_tests.py
 tests/
 requirements.txt
+history.txt
+logs/

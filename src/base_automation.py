@@ -18,6 +18,7 @@ if sys.platform == 'win32':
 
 from PySide6.QtCore import QThread, Signal
 from src.input_recorder import InputRecorder, RecordingManager
+from src.log_manager import log_manager
 
 # 设置pyautogui全局参数
 pyautogui.PAUSE = 0.1  # 每次操作后的默认暂停时间
@@ -67,6 +68,29 @@ class BaseAutomationThread(QThread):
         # 清理缓存
         self.template_cache.clear()
         self.screenshot_cache = None
+
+    def _log(self, message: str, level: str = "INFO"):
+        """
+        记录日志（同时发送信号和写入文件）
+        
+        Args:
+            message: 日志消息
+            level: 日志级别（DEBUG, INFO, WARNING, ERROR）
+        """
+        # 发送信号到UI
+        self.log_signal.emit(message)
+        
+        # 写入文件日志
+        if level == "DEBUG":
+            log_manager.debug(message)
+        elif level == "INFO":
+            log_manager.info(message)
+        elif level == "WARNING":
+            log_manager.warning(message)
+        elif level == "ERROR":
+            log_manager.error(message)
+        else:
+            log_manager.info(message)
 
     def random_delay(self, min_delay=0.5, max_delay=2.0):
         """
