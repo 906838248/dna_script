@@ -1,10 +1,10 @@
 from src.base_automation import BaseAutomationThread
 import pyautogui
 
-class ScriptRadBall(BaseAutomationThread):
+class Script80RadBall(BaseAutomationThread):
     SCRIPT_NAME = "深红凝珠"
     SCRIPT_DESCRIPTION = "刚需赛琪,带齐奶妈避免血量过低"
-    SCRIPT_IMG_FOLDER = "img/rad_ball"
+    SCRIPT_IMG_FOLDER = "img/rad_ball/80"
 
     def run(self):
         def game_logic():
@@ -12,7 +12,7 @@ class ScriptRadBall(BaseAutomationThread):
             self.log_signal.emit("进入游戏,当前为房间一")
 
             self.log_signal.emit("开始走出房间一")
-            self.load_recording("rad_ball/rad_ball")
+            self.load_recording("rad_ball/80/rad_ball_80")
             self.play_recording()
             self.recorder.wait_for_playback(timeout=60)
             pyautogui.press('q')
@@ -21,48 +21,48 @@ class ScriptRadBall(BaseAutomationThread):
             
             if self.find_image("map1.png", timeout=3):
                 self.log_signal.emit("确认为地图类型一")
-                self.load_recording("rad_ball/map1_1")
+                self.load_recording("rad_ball/80/map1_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map1_2")
+                self.load_recording("rad_ball/80/map1_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map1_3")
+                self.load_recording("rad_ball/80/map1_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
 
             elif self.find_image("map2.png", timeout=3):
                 self.log_signal.emit("确认为地图类型二")
-                self.load_recording("rad_ball/map2_1")
+                self.load_recording("rad_ball/80/map2_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map2_2")
+                self.load_recording("rad_ball/80/map2_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map2_3")
+                self.load_recording("rad_ball/80/map2_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
             elif self.find_image("map3.png", timeout=3):
                 self.log_signal.emit("确认为地图类型三")
-                self.load_recording("rad_ball/map3_1")
+                self.load_recording("rad_ball/80/map3_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map3_2")
+                self.load_recording("rad_ball/80/map3_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map3_3")
+                self.load_recording("rad_ball/80/map3_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
 
             elif self.find_image("map4.png", timeout=3):
                 self.log_signal.emit("确认为地图类型四")
-                self.load_recording("rad_ball/map4_1")
+                self.load_recording("rad_ball/80/map4_1")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map4_2")
+                self.load_recording("rad_ball/80/map4_2")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
-                self.load_recording("rad_ball/map4_3")
+                self.load_recording("rad_ball/80/map4_3")
                 self.play_recording()
                 self.recorder.wait_for_playback(timeout=300)
 

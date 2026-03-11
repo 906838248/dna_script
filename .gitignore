@@ -186,7 +186,8 @@ config/user_config.json
 rules/mode.md
 
 .trae/rules/mode.md
-fix.txt
+fixed1.txt
+fixed2.txt
 .config
 requirements.txt
 history.txt
