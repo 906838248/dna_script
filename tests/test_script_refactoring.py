@@ -14,7 +14,7 @@ from scripts import (
     Script60Coin,
     Script65Guard,
     Script40LevelExpel,
-    ScriptRadBall
+    Script80RadBall
 )
 
 
@@ -55,11 +55,11 @@ class TestScriptRefactoring:
     
     def test_script_rad_ball_attributes(self):
         """测试深红凝珠脚本属性"""
-        assert hasattr(ScriptRadBall, 'SCRIPT_NAME')
-        assert hasattr(ScriptRadBall, 'SCRIPT_DESCRIPTION')
-        assert hasattr(ScriptRadBall, 'SCRIPT_IMG_FOLDER')
-        assert ScriptRadBall.SCRIPT_NAME == "深红凝珠"
-        assert ScriptRadBall.SCRIPT_IMG_FOLDER == "img/rad_ball"
+        assert hasattr(Script80RadBall, 'SCRIPT_NAME')
+        assert hasattr(Script80RadBall, 'SCRIPT_DESCRIPTION')
+        assert hasattr(Script80RadBall, 'SCRIPT_IMG_FOLDER')
+        assert Script80RadBall.SCRIPT_NAME == "深红凝珠"
+        assert Script80RadBall.SCRIPT_IMG_FOLDER == "img/rad_ball/80"
     
     def test_script_60_level_expel_instantiation(self):
         """测试60级魔之楔驱离脚本实例化"""
@@ -91,7 +91,7 @@ class TestScriptRefactoring:
     
     def test_script_rad_ball_instantiation(self):
         """测试深红凝珠脚本实例化"""
-        script = ScriptRadBall(1, "test_folder")
+        script = Script80RadBall(1, "test_folder")
         assert script is not None
         assert script.loop_count == 1
         assert script.img_folder == "test_folder"
@@ -102,7 +102,7 @@ class TestScriptRefactoring:
         assert hasattr(Script60Coin, 'run')
         assert hasattr(Script65Guard, 'run')
         assert hasattr(Script40LevelExpel, 'run')
-        assert hasattr(ScriptRadBall, 'run')
+        assert hasattr(Script80RadBall, 'run')
     
     def test_script_code_reduction(self):
         """测试代码减少情况"""

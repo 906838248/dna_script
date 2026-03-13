@@ -38,15 +38,6 @@ class TestLogManager:
             except:
                 pass
     
-    def test_singleton_pattern(self, temp_log_dir):
-        """测试单例模式"""
-        LogManager._instance = None
-        LogManager._initialized = False
-        
-        manager1 = LogManager(log_dir=temp_log_dir)
-        manager2 = LogManager(log_dir=temp_log_dir)
-        
-        assert manager1 is manager2
     
     def test_log_directory_creation(self, log_manager, temp_log_dir):
         """测试日志目录创建"""
@@ -100,8 +91,17 @@ class TestLogManager:
                 break
         
         assert file_handler is not None
-        assert hasattr(file_handler, 'maxBytes')
-        assert hasattr(file_handler, 'backupCount')
+        
+        # 检查是否是异步日志处理器或RotatingFileHandler
+        from src.async_log_handler import AsyncLogHandler
+        if isinstance(file_handler, AsyncLogHandler):
+            # 异步处理器，检查base_handler
+            assert hasattr(file_handler.base_handler, 'maxBytes')
+            assert hasattr(file_handler.base_handler, 'backupCount')
+        else:
+            # 同步处理器，直接检查
+            assert hasattr(file_handler, 'maxBytes')
+            assert hasattr(file_handler, 'backupCount')
     
     def test_signal_emission(self, log_manager):
         """测试信号发射"""
@@ -217,3 +217,29 @@ class TestLogManager:
         # 验证日志处理器存在
         logger = manager1.get_logger()
         assert len(logger.handlers) > 0
+
+    def test_singleton_pattern(self, temp_log_dir):
+        """测试单例模式"""
+        # 重置单例状态
+        LogManager._instance = None
+        LogManager._initialized = False
+        
+        # 创建第一个实例
+        instance1 = LogManager(log_dir=temp_log_dir)
+        logger1 = instance1.get_logger()
+        
+        # 创建第二个实例
+        instance2 = LogManager(log_dir=temp_log_dir)
+        logger2 = instance2.get_logger()
+        
+        # 验证两个实例是同一个对象
+        assert instance1 is instance2, "两个实例应该是同一个对象"
+        
+        # 验证两个logger是同一个对象
+        assert logger1 is logger2, "两个logger应该是同一个对象"
+        
+        # 验证单例标志已设置
+        assert LogManager._initialized is True, "单例初始化标志应该为True"
+        
+        # 验证实例引用相同
+        assert LogManager._instance is instance1, "类级别的实例引用应该与创建的实例相同"

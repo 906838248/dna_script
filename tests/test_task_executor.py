@@ -183,6 +183,13 @@ class TestTaskExecutor:
         success = executor.execute_task(another_task)
         
         assert not success
+        
+        loop = QEventLoop()
+        executor.task_finished.connect(loop.quit)
+        executor.task_error.connect(loop.quit)
+        loop.exec()
+        
+        assert not executor.is_busy()
     
     def test_cancel_task(self, qt_app):
         """测试取消任务"""

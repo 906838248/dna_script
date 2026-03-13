@@ -163,12 +163,6 @@
   },
   {
     "type": "keyboard",
-    "action": "release",
-    "key": "w",
-    "time": 28.793306399998983
-  },
-  {
-    "type": "keyboard",
     "action": "press",
     "key": "ctrl",
     "time": 29.24229379999815
@@ -178,5 +172,11 @@
     "action": "release",
     "key": "ctrl",
     "time": 29.651253399999405
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "w",
+    "time": 29.793306399998983
   }
 ]

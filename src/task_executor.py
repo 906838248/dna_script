@@ -4,6 +4,7 @@
 支持进度报告和任务取消
 """
 
+import inspect
 from PySide6.QtCore import QObject, Signal, QThread
 from typing import Callable, Optional, Any
 
@@ -117,6 +118,10 @@ class TaskExecutor(QObject):
         self._current_worker.error.connect(self._on_task_error)
         self._current_worker.progress.connect(self.task_progress)
         
+        sig = inspect.signature(task_func)
+        if 'progress_callback' in sig.parameters:
+            self._current_worker.set_progress_callback(self._on_worker_progress)
+        
         self._current_worker.start()
         self._is_busy = True
         
@@ -169,6 +174,16 @@ class TaskExecutor(QObject):
         self._is_busy = False
         self._current_worker = None
         self.task_error.emit(error_type, error_msg)
+    
+    def _on_worker_progress(self, current: int, total: int):
+        """
+        工作线程进度回调
+        
+        Args:
+            current: 当前进度值
+            total: 总值
+        """
+        self.task_progress.emit(current, total)
     
     def cleanup(self):
         """

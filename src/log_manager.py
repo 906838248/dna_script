@@ -1,6 +1,7 @@
 """
 日志管理模块
 提供专业的日志记录功能，包括文件持久化、日志轮转和UI集成
+支持异步日志写入以提升性能
 """
 
 import logging
@@ -9,6 +10,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 from PySide6.QtCore import QObject, Signal
+
+from src.async_log_handler import AsyncLogHandler, AsyncLogManager
 
 
 class SignalLogHandler(logging.Handler, QObject):
@@ -50,15 +53,17 @@ class LogManager:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, log_dir: Optional[str] = None, log_level: int = logging.DEBUG):
+    def __init__(self, log_dir: Optional[str] = None, log_level: int = logging.DEBUG, enable_async: bool = True, max_log_files: int = 10):
         """
         初始化日志管理器
         
         Args:
             log_dir: 日志文件目录，默认为项目根目录下的 logs 文件夹
             log_level: 日志级别，默认为 DEBUG
+            enable_async: 是否启用异步日志写入，默认为True
+            max_log_files: 保留的最大日志文件数量，默认为10
         """
-        if self._initialized:
+        if LogManager._initialized:
             return
         
         if log_dir is None:
@@ -67,8 +72,20 @@ class LogManager:
             self.log_dir = Path(log_dir)
         
         self.log_level = log_level
+        self.enable_async = enable_async
+        self.max_log_files = max_log_files
         self.logger = logging.getLogger('dna_script')
         self.logger.setLevel(log_level)
+        
+        # 初始化异步日志管理器
+        self.async_log_manager: Optional[AsyncLogManager] = None
+        if self.enable_async:
+            self.async_log_manager = AsyncLogManager(
+                self.log_dir,
+                batch_size=10,
+                flush_interval=1.0,
+                max_log_files=max_log_files
+            )
         
         # 初始化信号处理器属性
         self.signal_handler: Optional[SignalLogHandler] = None
@@ -77,7 +94,7 @@ class LogManager:
         if not self.logger.handlers:
             self._setup_handlers()
         
-        self._initialized = True
+        LogManager._initialized = True
     
     def _setup_handlers(self):
         """
@@ -86,14 +103,23 @@ class LogManager:
         # 确保日志目录存在
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
-        # 文件处理器（带轮转）
-        file_handler = RotatingFileHandler(
-            self.log_dir / 'dna_script.log',
-            maxBytes=10*1024*1024,  # 10MB
-            backupCount=5,
-            encoding='utf-8'
-        )
-        file_handler.setLevel(logging.DEBUG)
+        # 文件处理器（带轮转）- 使用异步处理器
+        if self.enable_async and self.async_log_manager:
+            file_handler = self.async_log_manager.create_async_file_handler(
+                'dna_script.log',
+                level=logging.DEBUG,
+                max_bytes=10*1024*1024,  # 10MB
+                backup_count=5
+            )
+        else:
+            file_handler = RotatingFileHandler(
+                self.log_dir / 'dna_script.log',
+                maxBytes=10*1024*1024,  # 10MB
+                backupCount=5,
+                encoding='utf-8'
+            )
+            file_handler.setLevel(logging.DEBUG)
+        
         file_handler.name = 'file_handler'
         
         # 控制台处理器
@@ -269,6 +295,35 @@ class LogManager:
             message: 日志消息
         """
         self.logger.exception(message)
+    
+    def cleanup(self):
+        """
+        清理日志管理器资源
+        
+        关闭异步日志处理器，确保所有日志都已写入
+        限制日志文件数量
+        """
+        if self.async_log_manager:
+            # 限制日志文件数量
+            for handler in self.async_log_manager.async_handlers:
+                handler.limit_log_files(self.max_log_files)
+            
+            self.async_log_manager.cleanup()
+        
+        for handler in self.logger.handlers[:]:
+            handler.close()
+            self.logger.removeHandler(handler)
+    
+    def set_max_log_files(self, max_files: int):
+        """
+        设置最大日志文件数量
+        
+        Args:
+            max_files: 保留的最大日志文件数量
+        """
+        self.max_log_files = max_files
+        if self.async_log_manager:
+            self.async_log_manager.max_log_files = max_files
 
 
 # 全局日志管理器实例
