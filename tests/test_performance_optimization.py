@@ -39,7 +39,7 @@ class TestPerformanceOptimization:
         assert hasattr(automation, 'screenshot_cache')
         assert automation.screenshot_cache is None
         assert hasattr(automation, 'screenshot_cache_ttl')
-        assert automation.screenshot_cache_ttl == 0.1
+        assert automation.screenshot_cache_ttl == 0.5
     
     def test_template_cache_population(self, automation):
         """测试模板缓存填充"""
@@ -117,7 +117,7 @@ class TestPerformanceOptimization:
         first_cache_time = automation.screenshot_cache_time
         
         # 等待超过TTL时间
-        time.sleep(0.15)
+        time.sleep(0.6)
         
         # 再次查找（应该重新截图）
         automation.find_image("begin.png", timeout=1)
@@ -154,3 +154,20 @@ class TestPerformanceOptimization:
         # 由于网络和系统负载等因素，允许一定的性能波动
         time_ratio = cached_time / uncached_time
         assert time_ratio < 1.5, f"缓存版本耗时 {cached_time:.2f}s，无缓存版本耗时 {uncached_time:.2f}s，比例 {time_ratio:.2f}"
+    
+    def test_lru_cache_eviction(self, automation):
+        """测试LRU缓存淘汰机制"""
+        # 设置较小的缓存大小以便测试
+        automation.template_cache_max_size = 3
+        
+        # 加载4张不同的图片
+        images = ["begin.png", "set.png", "else.png", "reset.png"]
+        for img in images:
+            automation.find_image(img, timeout=1)
+        
+        # 验证缓存中只有最后3张图片（第一张应该被淘汰）
+        assert len(automation.template_cache) == 3
+        assert "begin.png" not in automation.template_cache  # 最久未使用的应该被淘汰
+        assert "set.png" in automation.template_cache
+        assert "else.png" in automation.template_cache
+        assert "reset.png" in automation.template_cache

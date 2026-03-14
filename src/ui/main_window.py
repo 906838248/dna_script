@@ -751,16 +751,38 @@ class MainWindow(QMainWindow):
         清理所有资源
         """
         import keyboard
+        import time
         
-        keyboard.unhook_all()
-        
-        if self.is_recording:
-            self.recording_controller.stop_recording()
-        
-        if self.recording_controller.is_playback_active():
-            self.recording_controller.stop_playback()
-        
-        if self.automation_controller.is_automation_running():
-            self.automation_controller.stop_automation()
+        try:
+            keyboard.unhook_all()
+            
+            # 停止录制
+            if self.is_recording:
+                self.recording_controller.stop_recording()
+            
+            # 停止回放
+            if self.recording_controller.is_playback_active():
+                self.recording_controller.stop_playback()
+            
+            # 停止自动化
+            if self.automation_controller.is_automation_running():
+                self.automation_controller.stop_automation()
+            
+            # 清理录制器资源
+            if hasattr(self, 'recorder') and self.recorder:
+                self.recorder.cleanup()
+            
+            # 清理控制器资源
+            if hasattr(self, 'recording_controller') and self.recording_controller:
+                self.recording_controller.cleanup()
+            
+            if hasattr(self, 'automation_controller') and self.automation_controller:
+                self.automation_controller.cleanup()
+            
+            # 等待所有子进程结束
+            time.sleep(0.5)
+            
+        except Exception as e:
+            print(f"关闭窗口时清理资源发生错误: {e}")
         
         event.accept()

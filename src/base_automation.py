@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import gc
 import cv2
 import numpy as np
 import pyautogui
@@ -58,18 +59,25 @@ class BaseAutomationThread(QThread):
         
         # 模板图片缓存，避免重复加载
         self.template_cache: Dict[str, Any] = {}
+        self.template_cache_max_size = 50  # 最大缓存图片数量
         
         # 屏幕截图缓存，减少频繁截图
         self.screenshot_cache: Optional[Any] = None
         self.screenshot_cache_time: float = 0
         self.screenshot_cache_ttl = GameConstants.SCREENSHOT_CACHE_TTL  # 缓存有效期（秒）
+        
+        # 模板缓存访问记录，用于LRU淘汰
+        self.template_cache_access: Dict[str, float] = {}
 
     def stop(self):
         """停止自动化线程"""
         self.running = False
         # 清理缓存
         self.template_cache.clear()
+        self.template_cache_access.clear()
         self.screenshot_cache = None
+        # 强制垃圾回收，释放内存
+        gc.collect()
 
     def _log(self, message: str, level: str = "INFO"):
         """
@@ -122,6 +130,24 @@ class BaseAutomationThread(QThread):
             sleep_time = min(check_interval, duration - elapsed)
             time.sleep(sleep_time)
             elapsed += sleep_time
+
+    def _evict_lru_template(self) -> None:
+        """
+        淘汰最久未使用的模板图片（LRU策略）
+        
+        当缓存达到最大限制时，删除最久未使用的模板以释放内存
+        """
+        if not self.template_cache_access:
+            return
+        
+        # 找到最久未使用的模板
+        lru_image = min(self.template_cache_access.items(), key=lambda x: x[1])[0]
+        
+        # 从缓存中删除
+        if lru_image in self.template_cache:
+            del self.template_cache[lru_image]
+            del self.template_cache_access[lru_image]
+            self._log(f"缓存已满，淘汰最久未使用的模板: {lru_image}", "DEBUG")
 
     def human_like_move(self, target_x: int, target_y: int) -> None:
         """
@@ -212,20 +238,31 @@ class BaseAutomationThread(QThread):
         """
         # 使用缓存的模板图片
         if image_name not in self.template_cache:
+            # 检查缓存大小，如果超过限制则删除最久未使用的模板
+            if len(self.template_cache) >= self.template_cache_max_size:
+                self._evict_lru_template()
+            
             image_path = os.path.join(self.img_folder, image_name)
             template = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
             if template is None:
                 self.log_signal.emit(f"错误: 无法加载图片 {image_path}")
                 return None
             self.template_cache[image_name] = template
+            self.template_cache_access[image_name] = time.time()
         
         template = self.template_cache[image_name]
+        self.template_cache_access[image_name] = time.time()
         
         start_time = time.time()
         while self.running and time.time() - start_time < timeout:
             # 使用缓存的屏幕截图（如果未过期）
             current_time = time.time()
             if self.screenshot_cache is None or current_time - self.screenshot_cache_time > self.screenshot_cache_ttl:
+                # 显式释放旧截图内存
+                if self.screenshot_cache is not None:
+                    del self.screenshot_cache
+                    self.screenshot_cache = None
+                
                 screenshot = pyautogui.screenshot()
                 screenshot_np = np.array(screenshot)
                 self.screenshot_cache = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)

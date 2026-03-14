@@ -544,6 +544,19 @@ class InputRecorder:
         if self.play_process and self.play_process.is_alive():
             self.play_process.terminate()
             self.play_process.join(timeout=2)
+            
+            # 如果进程仍然存活，强制杀死
+            if self.play_process.is_alive():
+                self.play_process.kill()
+                self.play_process.join(timeout=1)
+        
+        # 清理队列
+        if self.status_queue:
+            while not self.status_queue.empty():
+                try:
+                    self.status_queue.get_nowait()
+                except:
+                    break
         
         # 清理资源
         self.play_process = None
@@ -563,6 +576,41 @@ class InputRecorder:
         """清空录制"""
         self.recorded_actions = []
         self.start_time = 0
+    
+    def cleanup(self) -> None:
+        """
+        清理所有资源
+        确保所有进程和线程都被正确关闭
+        """
+        try:
+            # 停止录制
+            if self.is_recording:
+                self.stop_recording()
+            
+            # 停止回放
+            if self.is_playing:
+                self.stop_playback()
+            
+            # 清空录制数据
+            self.clear_recording()
+            
+            # 清理鼠标监听器
+            if self.mouse_listener:
+                try:
+                    self.mouse_listener.stop()
+                except:
+                    pass
+                self.mouse_listener = None
+            
+            # 清理键盘监听器
+            if self.keyboard_listener:
+                try:
+                    self.keyboard_listener.stop()
+                except:
+                    pass
+                self.keyboard_listener = None
+        except Exception as e:
+            print(f"清理InputRecorder时发生错误: {e}")
 
 
 class RecordingManager:

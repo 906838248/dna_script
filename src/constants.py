@@ -23,7 +23,7 @@ class GameConstants:
     
     # 延迟时间
     CHECK_INTERVAL = 0.1
-    SCREENSHOT_CACHE_TTL = 0.1
+    SCREENSHOT_CACHE_TTL = 0.5  # 增加缓存有效期，减少频繁内存分配
     
     # 游戏流程超时
     AGAIN_TIMEOUT = 240
