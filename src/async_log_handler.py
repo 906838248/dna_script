@@ -52,7 +52,7 @@ class AsyncLogHandler(logging.Handler):
         self.worker_thread = threading.Thread(
             target=self._process_logs,
             name="AsyncLogWorker",
-            daemon=False  # 改为非守护线程，确保日志写入完成
+            daemon=True  # 设置为守护线程，允许程序退出
         )
         self.worker_thread.start()
     

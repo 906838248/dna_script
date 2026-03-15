@@ -168,6 +168,11 @@ class ShortcutManager:
             ShortcutAction.TOGGLE_RECORDING: "F8",
             ShortcutAction.STOP_RECORDING_PLAYBACK: "esc"
         }
+    
+    def cleanup(self):
+        """清理资源，移除所有快捷键"""
+        self._remove_all_hotkeys()
+        self.action_callbacks.clear()
 
 
 # 全局快捷键管理器实例

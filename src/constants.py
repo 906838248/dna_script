@@ -21,6 +21,12 @@ class GameConstants:
     MOUSE_MOVE_STEPS_MAX = 5
     MOUSE_MOVE_STEP_SIZE = 100
     
+    # 多分辨率支持
+    BASE_RESOLUTION = (1920, 1080)  # 基准分辨率
+    ENABLE_FEATURE_MATCHING = True  # 启用特征点匹配
+    FEATURE_MATCH_THRESHOLD = 0.7  # 特征点匹配阈值
+    MIN_MATCH_COUNT = 4  # 最小匹配点数量
+    
     # 延迟时间
     CHECK_INTERVAL = 0.1
     SCREENSHOT_CACHE_TTL = 0.5  # 增加缓存有效期，减少频繁内存分配

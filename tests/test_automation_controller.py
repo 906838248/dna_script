@@ -26,9 +26,10 @@ class MockScriptInfo:
 
 class MockAutomationThread:
     """模拟自动化线程类"""
-    def __init__(self, loop_count, img_folder):
+    def __init__(self, loop_count, img_folder, game_resolution=None):
         self.loop_count = loop_count
         self.img_folder = img_folder
+        self.game_resolution = game_resolution
         self.log_signal = Mock()
         self.finished_signal = Mock()
         self.progress_signal = Mock()
@@ -155,7 +156,7 @@ class TestAutomationController:
     def test_stop_automation_timeout(self, controller, mock_script_info):
         """测试停止自动化超时"""
         class SlowThread:
-            def __init__(self, loop_count, img_folder):
+            def __init__(self, loop_count, img_folder, game_resolution=None):
                 self.log_signal = Mock()
                 self.finished_signal = Mock()
                 self.progress_signal = Mock()

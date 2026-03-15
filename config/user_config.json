@@ -1,8 +1,12 @@
 {
     "script": {
-        "last_selected": "深红凝珠",
+        "last_selected": "65级扼守",
         "last_loop_count": 99,
-        "auto_switch_to_log": true
+        "auto_switch_to_log": true,
+        "game_resolution": {
+            "width": 1600,
+            "height": 900
+        }
     },
     "recording": {
         "last_name": "map1_2"

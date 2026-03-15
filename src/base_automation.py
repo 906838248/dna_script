@@ -39,13 +39,14 @@ class BaseAutomationThread(QThread):
     progress_signal = Signal(int, int)  # 进度信号，参数为(当前循环, 总循环)
     recording_state_signal = Signal(bool, int)  # 录制状态信号，参数为(是否录制中, 操作数)
 
-    def __init__(self, loop_count: int, img_folder: str):
+    def __init__(self, loop_count: int, img_folder: str, template_resolution: Tuple[int, int] = None):
         """
         初始化自动化线程
         
         Args:
             loop_count: 循环次数
             img_folder: 图片文件夹路径，用于存储识别的图片
+            template_resolution: 模板图片的分辨率，如果为None则使用基准分辨率(1920x1080)
         """
         super().__init__()
         self.loop_count = loop_count
@@ -68,6 +69,21 @@ class BaseAutomationThread(QThread):
         
         # 模板缓存访问记录，用于LRU淘汰
         self.template_cache_access: Dict[str, float] = {}
+        
+        # 多分辨率支持
+        # 游戏分辨率（玩家设置的游戏窗口分辨率，默认1920x1080）
+        self.game_resolution = template_resolution if template_resolution else GameConstants.BASE_RESOLUTION
+        self.scale_factor = self._calculate_scale_factor()
+        
+        # ORB特征检测器（用于多分辨率匹配）
+        self.orb_detector = cv2.ORB_create(nfeatures=500)
+        self.bf_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        
+        # 特征点缓存
+        self.feature_cache: Dict[str, Tuple[Any, Any]] = {}  # {image_name: (keypoints, descriptors)}
+        
+        # 设置为非守护线程，但确保能正确停止
+        self.setTerminationEnabled(True)
 
     def stop(self):
         """停止自动化线程"""
@@ -75,9 +91,151 @@ class BaseAutomationThread(QThread):
         # 清理缓存
         self.template_cache.clear()
         self.template_cache_access.clear()
+        self.feature_cache.clear()
         self.screenshot_cache = None
         # 强制垃圾回收，释放内存
         gc.collect()
+    
+    def _get_screen_resolution(self) -> Tuple[int, int]:
+        """
+        获取当前屏幕分辨率
+        
+        Returns:
+            屏幕分辨率 (width, height)
+        """
+        try:
+            screen_width, screen_height = pyautogui.size()
+            return (screen_width, screen_height)
+        except Exception as e:
+            self._log(f"获取屏幕分辨率失败: {e}，使用默认分辨率", "WARNING")
+            return GameConstants.BASE_RESOLUTION
+    
+    def _calculate_scale_factor(self) -> float:
+        """
+        计算缩放因子
+        
+        缩放因子 = 游戏分辨率 / 模板分辨率
+        
+        Returns:
+            缩放因子
+        """
+        game_width, game_height = self.game_resolution
+        template_width, template_height = GameConstants.BASE_RESOLUTION
+        
+        # 计算游戏分辨率相对于模板分辨率的缩放因子
+        scale_x = game_width / template_width
+        scale_y = game_height / template_height
+        
+        # 使用平均缩放因子
+        scale_factor = (scale_x + scale_y) / 2
+        
+        self._log(f"模板分辨率: {template_width}x{template_height}, 游戏分辨率: {game_width}x{game_height}, 缩放因子: {scale_factor:.2f}", "INFO")
+        return scale_factor
+    
+    def _scale_template(self, template: np.ndarray) -> np.ndarray:
+        """
+        根据游戏分辨率缩放模板图片
+        
+        Args:
+            template: 原始模板图片
+            
+        Returns:
+            缩放后的模板图片
+        """
+        # 如果缩放因子接近1，不需要缩放
+        if abs(self.scale_factor - 1.0) < 0.01:
+            return template
+        
+        # 计算新尺寸
+        h, w = template.shape[:2]
+        new_w = int(w * self.scale_factor)
+        new_h = int(h * self.scale_factor)
+        
+        # 缩放图片
+        scaled = cv2.resize(template, (new_w, new_h), interpolation=cv2.INTER_AREA if self.scale_factor < 1.0 else cv2.INTER_LINEAR)
+        
+        return scaled
+    
+    def _match_by_features(self, screenshot: np.ndarray, template: np.ndarray, confidence: float) -> Optional[Tuple[int, int]]:
+        """
+        使用特征点匹配查找图片（分辨率无关）
+        
+        Args:
+            screenshot: 屏幕截图
+            template: 模板图片
+            confidence: 置信度阈值
+            
+        Returns:
+            找到则返回(center_x, center_y)，否则返回None
+        """
+        try:
+            # 提取特征点和描述符
+            kp1, des1 = self.orb_detector.detectAndCompute(template, None)
+            kp2, des2 = self.orb_detector.detectAndCompute(screenshot, None)
+            
+            if des1 is None or des2 is None:
+                return None
+            
+            if len(des1) < GameConstants.MIN_MATCH_COUNT or len(des2) < GameConstants.MIN_MATCH_COUNT:
+                return None
+            
+            # 特征点匹配
+            matches = self.bf_matcher.match(des1, des2)
+            
+            if len(matches) < GameConstants.MIN_MATCH_COUNT:
+                return None
+            
+            # 按距离排序，取最佳匹配
+            matches = sorted(matches, key=lambda x: x.distance)
+            good_matches = matches[:min(len(matches), 20)]  # 取前20个最佳匹配
+            
+            if len(good_matches) < GameConstants.MIN_MATCH_COUNT:
+                return None
+            
+            # 计算匹配质量
+            avg_distance = sum(m.distance for m in good_matches) / len(good_matches)
+            match_quality = 1.0 - (avg_distance / 100.0)  # 归一化距离
+            
+            if match_quality < GameConstants.FEATURE_MATCH_THRESHOLD:
+                return None
+            
+            # 计算模板中心在屏幕中的位置
+            template_center_x = template.shape[1] // 2
+            template_center_y = template.shape[0] // 2
+            
+            # 使用匹配点计算中心位置
+            screen_points = []
+            for match in good_matches:
+                # 模板中的点
+                template_pt = kp1[match.queryIdx].pt
+                # 屏幕中的对应点
+                screen_pt = kp2[match.trainIdx].pt
+                
+                # 计算偏移
+                offset_x = screen_pt[0] - template_pt[0] * self.scale_factor
+                offset_y = screen_pt[1] - template_pt[1] * self.scale_factor
+                
+                screen_points.append((offset_x + template_center_x * self.scale_factor,
+                                     offset_y + template_center_y * self.scale_factor))
+            
+            if not screen_points:
+                return None
+            
+            # 使用中位数作为最终位置（更鲁棒）
+            center_x = int(np.median([p[0] for p in screen_points]))
+            center_y = int(np.median([p[1] for p in screen_points]))
+            
+            # 验证位置是否在屏幕范围内
+            screen_h, screen_w = screenshot.shape[:2]
+            if 0 <= center_x < screen_w and 0 <= center_y < screen_h:
+                self._log(f"特征点匹配成功，质量: {match_quality:.2f}", "DEBUG")
+                return (center_x, center_y)
+            
+            return None
+            
+        except Exception as e:
+            self._log(f"特征点匹配失败: {e}", "DEBUG")
+            return None
 
     def _log(self, message: str, level: str = "INFO"):
         """
@@ -147,6 +305,9 @@ class BaseAutomationThread(QThread):
         if lru_image in self.template_cache:
             del self.template_cache[lru_image]
             del self.template_cache_access[lru_image]
+            # 同时清理特征点缓存
+            if lru_image in self.feature_cache:
+                del self.feature_cache[lru_image]
             self._log(f"缓存已满，淘汰最久未使用的模板: {lru_image}", "DEBUG")
 
     def human_like_move(self, target_x: int, target_y: int) -> None:
@@ -226,7 +387,7 @@ class BaseAutomationThread(QThread):
 
     def find_image(self, image_name: str, confidence: float = GameConstants.DEFAULT_CONFIDENCE, timeout: int = GameConstants.DEFAULT_TIMEOUT) -> Optional[Tuple[int, int]]:
         """
-        在屏幕上查找指定图片
+        在屏幕上查找指定图片（支持多分辨率）
         
         Args:
             image_name: 图片文件名
@@ -236,9 +397,8 @@ class BaseAutomationThread(QThread):
         Returns:
             找到则返回(center_x, center_y)，否则返回None
         """
-        # 使用缓存的模板图片
+        # 加载模板图片
         if image_name not in self.template_cache:
-            # 检查缓存大小，如果超过限制则删除最久未使用的模板
             if len(self.template_cache) >= self.template_cache_max_size:
                 self._evict_lru_template()
             
@@ -247,18 +407,21 @@ class BaseAutomationThread(QThread):
             if template is None:
                 self.log_signal.emit(f"错误: 无法加载图片 {image_path}")
                 return None
+            
             self.template_cache[image_name] = template
             self.template_cache_access[image_name] = time.time()
         
         template = self.template_cache[image_name]
         self.template_cache_access[image_name] = time.time()
         
+        # 根据游戏分辨率缩放模板图片
+        scaled_template = self._scale_template(template)
+        
         start_time = time.time()
         while self.running and time.time() - start_time < timeout:
-            # 使用缓存的屏幕截图（如果未过期）
+            # 使用缓存的屏幕截图
             current_time = time.time()
             if self.screenshot_cache is None or current_time - self.screenshot_cache_time > self.screenshot_cache_ttl:
-                # 显式释放旧截图内存
                 if self.screenshot_cache is not None:
                     del self.screenshot_cache
                     self.screenshot_cache = None
@@ -270,15 +433,21 @@ class BaseAutomationThread(QThread):
             
             screenshot_bgr = self.screenshot_cache
             
-            # 使用模板匹配算法查找图片
-            result = cv2.matchTemplate(screenshot_bgr, template, cv2.TM_CCOEFF_NORMED)
+            # 方法1：模板匹配（快速）
+            result = cv2.matchTemplate(screenshot_bgr, scaled_template, cv2.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             
             if max_val >= confidence:
-                h, w = template.shape[:2]
+                h, w = scaled_template.shape[:2]
                 center_x = max_loc[0] + w // 2
                 center_y = max_loc[1] + h // 2
                 return (center_x, center_y)
+            
+            # 方法2：特征点匹配（如果启用且模板匹配失败）
+            if GameConstants.ENABLE_FEATURE_MATCHING and max_val < confidence:
+                feature_result = self._match_by_features(screenshot_bgr, template, confidence)
+                if feature_result:
+                    return feature_result
             
             self.interruptible_sleep(GameConstants.CHECK_INTERVAL)
         

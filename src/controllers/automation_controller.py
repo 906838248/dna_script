@@ -67,13 +67,14 @@ class AutomationController(QObject):
         self.is_running = False
         self.last_error = None
     
-    def start_automation(self, script_info, loop_count):
+    def start_automation(self, script_info, loop_count, game_resolution=None):
         """
         启动自动化脚本
         
         Args:
             script_info: 脚本信息对象
             loop_count: 循环次数
+            game_resolution: 游戏窗口分辨率，如果为None则使用默认分辨率(1920x1080)
             
         Returns:
             bool: 是否成功启动
@@ -115,7 +116,7 @@ class AutomationController(QObject):
             self.current_script = script_info
             
             try:
-                self.automation_thread = script_info.script_class(loop_count, script_info.img_folder)
+                self.automation_thread = script_info.script_class(loop_count, script_info.img_folder, game_resolution)
             except Exception as e:
                 error_msg = f"脚本初始化失败: {str(e)}"
                 self.log_signal.emit(error_msg)
@@ -260,6 +261,22 @@ class AutomationController(QObject):
                 self.stop_automation(timeout=5)
             except Exception as e:
                 self.log_signal.emit(f"清理资源时发生错误: {str(e)}")
+                # 强制终止线程
+                if self.automation_thread:
+                    try:
+                        self.automation_thread.terminate()
+                        self.automation_thread.wait(2000)
+                    except:
+                        pass
+        
+        # 断开所有信号连接
+        if self.automation_thread:
+            try:
+                self.automation_thread.log_signal.disconnect()
+                self.automation_thread.finished_signal.disconnect()
+                self.automation_thread.progress_signal.disconnect()
+            except:
+                pass
         
         self.automation_thread = None
         self.current_script = None

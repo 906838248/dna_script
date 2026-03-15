@@ -228,6 +228,36 @@ class MainWindow(QMainWindow):
         self.auto_switch_checkbox.stateChanged.connect(self.on_auto_switch_changed)
         auto_switch_layout.addWidget(self.auto_switch_checkbox)
         
+        resolution_group = QGroupBox("游戏分辨率设置")
+        resolution_layout = QHBoxLayout()
+        
+        resolution_label = QLabel("游戏分辨率:")
+        self.resolution_width_spinbox = QSpinBox()
+        self.resolution_width_spinbox.setMinimum(800)
+        self.resolution_width_spinbox.setMaximum(7680)
+        self.resolution_width_spinbox.setValue(config_manager.get_last_resolution_width())
+        self.resolution_width_spinbox.setPrefix("宽: ")
+        self.resolution_width_spinbox.setSuffix(" px")
+        self.resolution_width_spinbox.valueChanged.connect(self.on_resolution_changed)
+        
+        self.resolution_height_spinbox = QSpinBox()
+        self.resolution_height_spinbox.setMinimum(600)
+        self.resolution_height_spinbox.setMaximum(4320)
+        self.resolution_height_spinbox.setValue(config_manager.get_last_resolution_height())
+        self.resolution_height_spinbox.setPrefix("高: ")
+        self.resolution_height_spinbox.setSuffix(" px")
+        self.resolution_height_spinbox.valueChanged.connect(self.on_resolution_changed)
+        
+        resolution_reset_button = QPushButton("重置为默认")
+        resolution_reset_button.setFixedSize(100, 28)
+        resolution_reset_button.clicked.connect(self.reset_resolution_to_default)
+        
+        resolution_layout.addWidget(resolution_label)
+        resolution_layout.addWidget(self.resolution_width_spinbox)
+        resolution_layout.addWidget(self.resolution_height_spinbox)
+        resolution_layout.addWidget(resolution_reset_button)
+        resolution_group.setLayout(resolution_layout)
+        
         progress_group = QGroupBox("进度")
         progress_layout = QHBoxLayout()
         self.progress_label = QLabel("进度: 0 / 0")
@@ -238,6 +268,7 @@ class MainWindow(QMainWindow):
         automation_layout.addWidget(script_group)
         automation_layout.addWidget(control_group)
         automation_layout.addLayout(auto_switch_layout)
+        automation_layout.addWidget(resolution_group)
         automation_layout.addWidget(progress_group)
         automation_layout.addStretch()
         
@@ -545,6 +576,18 @@ class MainWindow(QMainWindow):
         auto_switch = self.auto_switch_checkbox.isChecked()
         config_manager.set_auto_switch_to_log(auto_switch)
     
+    def on_resolution_changed(self):
+        """分辨率改变时的回调"""
+        width = self.resolution_width_spinbox.value()
+        height = self.resolution_height_spinbox.value()
+        config_manager.set_template_resolution(width, height)
+    
+    def reset_resolution_to_default(self):
+        """重置游戏分辨率为默认值(1920x1080)"""
+        self.resolution_width_spinbox.setValue(1920)
+        self.resolution_height_spinbox.setValue(1080)
+        self.log("已重置为默认游戏分辨率: 1920x1080")
+    
     def start_automation(self):
         """开始自动化脚本"""
         if self.automation_controller.is_automation_running():
@@ -557,13 +600,19 @@ class MainWindow(QMainWindow):
             return
         
         loop_count = self.loop_spinbox.value()
+        game_resolution = (
+            self.resolution_width_spinbox.value(),
+            self.resolution_height_spinbox.value()
+        )
         
         try:
-            if self.automation_controller.start_automation(script, loop_count):
+            if self.automation_controller.start_automation(script, loop_count, game_resolution):
                 self.start_button.setEnabled(False)
                 self.stop_button.setEnabled(True)
                 self.loop_spinbox.setEnabled(False)
                 self.script_combo.setEnabled(False)
+                self.resolution_width_spinbox.setEnabled(False)
+                self.resolution_height_spinbox.setEnabled(False)
                 
                 if self.auto_switch_checkbox.isChecked():
                     self.tab_widget.setCurrentIndex(2)
@@ -579,6 +628,8 @@ class MainWindow(QMainWindow):
                 self.stop_button.setEnabled(False)
                 self.loop_spinbox.setEnabled(True)
                 self.script_combo.setEnabled(True)
+                self.resolution_width_spinbox.setEnabled(True)
+                self.resolution_height_spinbox.setEnabled(True)
         except Exception as e:
             self.log(f"停止自动化失败: {str(e)}")
             QMessageBox.critical(self, "停止失败", f"无法停止自动化脚本:\n\n{str(e)}")
@@ -589,6 +640,8 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(False)
         self.loop_spinbox.setEnabled(True)
         self.script_combo.setEnabled(True)
+        self.resolution_width_spinbox.setEnabled(True)
+        self.resolution_height_spinbox.setEnabled(True)
     
     def update_progress(self, current, total):
         """更新进度显示"""
@@ -752,9 +805,12 @@ class MainWindow(QMainWindow):
         """
         import keyboard
         import time
+        import sys
         
         try:
+            # 清理快捷键
             keyboard.unhook_all()
+            shortcut_manager.cleanup()
             
             # 停止录制
             if self.is_recording:
@@ -782,7 +838,12 @@ class MainWindow(QMainWindow):
             # 等待所有子进程结束
             time.sleep(0.5)
             
+            # 强制退出应用程序
+            QApplication.instance().quit()
+            
         except Exception as e:
             print(f"关闭窗口时清理资源发生错误: {e}")
+            # 即使出错也要强制退出
+            sys.exit(0)
         
         event.accept()

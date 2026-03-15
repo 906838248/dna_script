@@ -17,7 +17,11 @@ class ConfigManager:
         "script": {
             "last_selected": None,
             "last_loop_count": 1,
-            "auto_switch_to_log": False
+            "auto_switch_to_log": False,
+            "game_resolution": {
+                "width": 1920,
+                "height": 1080
+            }
         },
         "recording": {
             "last_name": ""
@@ -41,6 +45,16 @@ class ConfigManager:
             "type": int,
             "min": 1,
             "max": 9999
+        },
+        "script.template_resolution.width": {
+            "type": int,
+            "min": 800,
+            "max": 7680
+        },
+        "script.template_resolution.height": {
+            "type": int,
+            "min": 600,
+            "max": 4320
         },
         "window.width": {
             "type": int,
@@ -255,6 +269,38 @@ class ConfigManager:
             bool: 设置是否成功
         """
         return self.set("script.auto_switch_to_log", auto_switch)
+    
+    def get_last_resolution_width(self) -> int:
+        """
+        获取上次设置的游戏分辨率宽度
+        
+        Returns:
+            int: 游戏分辨率宽度，默认为 1920
+        """
+        return self.get("script.game_resolution.width", 1920)
+    
+    def get_last_resolution_height(self) -> int:
+        """
+        获取上次设置的游戏分辨率高度
+        
+        Returns:
+            int: 游戏分辨率高度，默认为 1080
+        """
+        return self.get("script.game_resolution.height", 1080)
+    
+    def set_template_resolution(self, width: int, height: int) -> bool:
+        """
+        设置游戏分辨率
+        
+        Args:
+            width: 游戏分辨率宽度
+            height: 游戏分辨率高度
+            
+        Returns:
+            bool: 设置是否成功
+        """
+        self.set("script.game_resolution.width", width)
+        return self.set("script.game_resolution.height", height)
     
     def get_last_recording_name(self) -> str:
         """
