@@ -178,5 +178,17 @@
     "action": "release",
     "key": "w",
     "time": 29.793306399998983
+  },
+  {
+    "type": "keyboard",
+    "action": "press",
+    "key": "q",
+    "time": 29.84229379999815
+  },
+  {
+    "type": "keyboard",
+    "action": "release",
+    "key": "q",
+    "time": 30.34229379999815
   }
 ]
